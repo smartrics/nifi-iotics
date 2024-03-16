@@ -1,0 +1,68 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package smartrics.iotics.nifi.processors;
+
+import com.google.gson.Gson;
+import org.apache.nifi.reporting.InitializationException;
+import org.apache.nifi.util.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static smartrics.iotics.nifi.processors.IoticsControllerServiceFactory.injectIoticsHostService;
+
+public class IoticsJSONToTwinTest {
+
+    private TestRunner testRunner;
+
+    @BeforeEach
+    public void init() throws InitializationException {
+        testRunner = TestRunners.newTestRunner(IoticsJSONToTwin.class);
+        injectIoticsHostService(testRunner);
+        testRunner.setProperty(IoticsJSONToTwin.ONT_PREFIX, "https://data.iotics.com/nifi/");
+        testRunner.setProperty(IoticsJSONToTwin.ID_PROP, "https://data.iotics.com/nifi/id");
+    }
+
+    // @Test
+    // IntegrationTest
+    public void testProcessor() throws IOException {
+        String content = Files.readString(Path.of("src\\test\\resources\\twins.json"));
+        testRunner.enqueue(content);
+        testRunner.run(1);
+        //assert the input Q is empty and the flowfile is processed
+        testRunner.assertQueueEmpty();
+        List<MockFlowFile> results = testRunner.getFlowFilesForRelationship(Constants.SUCCESS);
+        assertThat("Number of flowfiles in Success Queue is as expected (No of Flowfile = 1) ", results.size() == 1);
+
+        MockFlowFile outputFlowfile = results.getFirst();
+        String outputFlowfileContent = new String(testRunner.getContentAsByteArray(outputFlowfile));
+        Gson gson = new Gson();
+        Map<String, Object> json = gson.fromJson(outputFlowfileContent, Map.class);
+
+        assertEquals(json.size(), 2);
+        assertEquals(10, ((List) json.get("successes")).size());
+        assertEquals(0, ((List) json.get("failures")).size());
+    }
+
+}
