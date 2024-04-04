@@ -19,6 +19,9 @@ package smartrics.iotics.nifi.processors;
 import com.google.common.collect.Lists;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
@@ -28,8 +31,6 @@ import com.iotics.api.FeedData;
 import com.iotics.api.FeedID;
 import com.iotics.api.ShareFeedDataRequest;
 import com.iotics.api.ShareFeedDataResponse;
-import io.grpc.Status;
-import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
@@ -38,7 +39,6 @@ import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.*;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
-import org.checkerframework.checker.units.qual.C;
 import org.jetbrains.annotations.NotNull;
 import smartrics.iotics.nifi.processors.objects.MyTwin;
 import smartrics.iotics.nifi.processors.objects.Port;
@@ -52,7 +52,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
-import java.util.function.Function;
+import java.util.concurrent.ExecutorService;
 
 import static smartrics.iotics.nifi.processors.Constants.*;
 
@@ -62,6 +62,7 @@ import static smartrics.iotics.nifi.processors.Constants.*;
         """)
 public class IoticsPublisher extends AbstractProcessor {
 
+    private static final Gson gson = new Gson();
     public static PropertyDescriptor DEBUG_FLAG = new PropertyDescriptor
             .Builder().name("debugFlag")
             .displayName("Debug flag")
@@ -71,11 +72,33 @@ public class IoticsPublisher extends AbstractProcessor {
             .addValidator(StandardValidators.BOOLEAN_VALIDATOR)
             .build();
     private final EventBus eventBus = new EventBus();
+    private final Map<String, StreamObserver<ShareFeedDataRequest>> cache = new ConcurrentHashMap<>();
     private List<PropertyDescriptor> descriptors;
     private Set<Relationship> relationships;
     private IoticsApi ioticsApi;
+    private ExecutorService executor;
 
-    private final Map<String, StreamObserver<ShareFeedDataRequest>> cache = new ConcurrentHashMap<>();
+    private static void transferFailure(StreamEvent event, Throwable t) {
+        String json = gson.toJson(new PublishFailure(event.myTwin(), t.getMessage()), new TypeToken<PublishFailure>() {
+        }.getType());
+        transfer(event, json, FAILURE);
+    }
+
+    private static void transferSuccess(StreamEvent event) {
+        String json = gson.toJson(event.myTwin(), new TypeToken<MyTwin>() {
+        }.getType());
+        transfer(event, json, SUCCESS);
+    }
+
+    private static void transfer(StreamEvent event, String json, Relationship rel) {
+        ProcessSession session = event.session();
+        FlowFile ff = session.create(event.flowFile());
+        session.write(ff, out -> {
+            out.write(json.getBytes(StandardCharsets.UTF_8));
+        });
+        session.transfer(ff, rel);
+        event.latchFeeds().countDown();
+    }
 
     @Override
     protected void init(final ProcessorInitializationContext context) {
@@ -91,7 +114,6 @@ public class IoticsPublisher extends AbstractProcessor {
 
         StreamNewFeedListener listener = new StreamNewFeedListener();
         eventBus.register(listener);
-
     }
 
     @Override
@@ -109,6 +131,7 @@ public class IoticsPublisher extends AbstractProcessor {
         IoticsHostService ioticsHostService =
                 context.getProperty(IOTICS_HOST_SERVICE).asControllerService(IoticsHostService.class);
         this.ioticsApi = ioticsHostService.getIoticsApi();
+        this.executor = ioticsHostService.getExecutor();
 
         Boolean debugOn = context.getProperty(DEBUG_FLAG).asBoolean();
 
@@ -126,12 +149,14 @@ public class IoticsPublisher extends AbstractProcessor {
                 List<MyTwin> receivedTwins;
                 if (jsonElement.isJsonArray()) {
                     // Specify the list type using TypeToken
-                    Type listType = new TypeToken<List<MyTwin>>() {}.getType();
+                    Type listType = new TypeToken<List<MyTwin>>() {
+                    }.getType();
 
                     // Convert the JsonElement to a List<MyCustomClass>
                     receivedTwins = gson.fromJson(jsonElement, listType);
                 } else {
-                    Type type = new TypeToken<MyTwin>() {}.getType();
+                    Type type = new TypeToken<MyTwin>() {
+                    }.getType();
                     MyTwin myTwin = gson.fromJson(jsonElement, type);
                     receivedTwins = Lists.newArrayList(myTwin);
                 }
@@ -143,25 +168,8 @@ public class IoticsPublisher extends AbstractProcessor {
                     if (myTwin.keyName() != null) {
                         getLogger().warn("invalid twin. missing keyName: " + myTwin.id());
                     }
-
                     CountDownLatch latchFeeds = new CountDownLatch(myTwin.feeds().size());
-                    myTwin.feeds().forEach(port -> eventBus.post(new StreamEvent(latchFeeds, myTwin, port)));
-
-                    if (!debugOn) return;
-
-                    // TODO: debug output on a downstream flowfile
-                    FlowFile ff = session.create(flowFile);
-                    try {
-                        Type type = new TypeToken<MyTwin>() {
-                        }.getType();
-                        String json = gson.toJson(myTwin, type);
-                        session.write(ff, out -> {
-                            out.write(json.getBytes(StandardCharsets.UTF_8));
-                        });
-                        session.transfer(ff, SUCCESS);
-                    } catch (Exception e) {
-                        session.transfer(ff, FAILURE);
-                    }
+                    myTwin.feeds().forEach(port -> eventBus.post(new StreamEvent(session, flowFile, latchFeeds, myTwin, port)));
                 });
                 latch.countDown();
             } catch (Throwable t) {
@@ -177,28 +185,36 @@ public class IoticsPublisher extends AbstractProcessor {
         }
     }
 
-    private void streamFeed(StreamEvent event) {
-        String cacheKey = makeCacheKey(event);
-        StreamObserver<ShareFeedDataRequest> stream = cache.computeIfAbsent(cacheKey, s -> newStream(event));
-        if (stream == null) {
-            return;
-        }
+    private void shareFeed(StreamEvent event) {
         try {
             ShareFeedDataRequest request = newShareFeedDataRequest(event);
             if (request == null) {
                 return;
             }
-            stream.onNext(request);
-        }catch (Exception e){
-            stream.onError(e);
-            // try again
-            cache.remove(cacheKey);
-            eventBus.post(event);
+            ListenableFuture<ShareFeedDataResponse> res = ioticsApi.feedAPIFutureStub().shareFeedData(request);
+            Futures.addCallback(res, new FutureCallback<>() {
+
+                @Override
+                public void onSuccess(ShareFeedDataResponse result) {
+                    try {
+                        transferSuccess(event);
+                    } catch (Exception e) {
+                        transferFailure(event, e);
+                    }
+                }
+
+                @Override
+                public void onFailure(@NotNull Throwable t) {
+                    transferFailure(event, t);
+                }
+            }, this.executor);
+        } catch (Exception e) {
+            transferFailure(event, e);
         }
     }
 
     private ShareFeedDataRequest newShareFeedDataRequest(StreamEvent event) {
-        if(event.port().payloadAsJson() == null) {
+        if (event.port().payloadAsJson() == null) {
             return null;
         }
         return ShareFeedDataRequest.newBuilder()
@@ -207,7 +223,7 @@ public class IoticsPublisher extends AbstractProcessor {
                         .setFeedId(FeedID.newBuilder()
                                 .setHostId(event.myTwin().hostDid())
                                 .setTwinId(event.myTwin().id())
-                                .setId (event.port().id())
+                                .setId(event.port().id())
                                 .build())
                         .build())
                 .setPayload(ShareFeedDataRequest.Payload.newBuilder()
@@ -218,48 +234,23 @@ public class IoticsPublisher extends AbstractProcessor {
                 .build();
     }
 
-    private StreamObserver<ShareFeedDataRequest> newStream(StreamEvent event) {
-        try {
-            return ioticsApi.feedAPIStub().streamFeedData(new StreamObserver<>() {
-                @Override
-                public void onNext(ShareFeedDataResponse shareFeedDataResponse) {
-                    getLogger().info("shared: " + shareFeedDataResponse);
-                }
-
-                @Override
-                public void onError(Throwable throwable) {
-                    getLogger().error("error sharing", throwable);
-                    if(throwable instanceof StatusRuntimeException) {
-                        StatusRuntimeException ex = (StatusRuntimeException)throwable;
-                        if(ex.getStatus().getCode() == Status.Code.PERMISSION_DENIED) {
-
-                        }
-                    }
-                }
-
-                @Override
-                public void onCompleted() {
-
-                }
-            });
-        } catch (Exception e) {
-            getLogger().warn("unable to create stream", e);
-            return null;
-        }
-    }
-
     private String makeCacheKey(StreamEvent event) {
         return event.myTwin().hostDid() + "/" + event.myTwin().id() + "/" + event.port().id();
     }
 
-    public record StreamEvent(CountDownLatch latchFeeds, MyTwin myTwin, Port port) {
+    public record StreamEvent(ProcessSession session, FlowFile flowFile, CountDownLatch latchFeeds, MyTwin myTwin,
+                              Port port) {
+    }
+
+    public record PublishFailure(MyTwin twin, String error) {
+
     }
 
     public class StreamNewFeedListener {
 
         @Subscribe
         public void onFollowEvent(IoticsPublisher.StreamEvent event) {
-            streamFeed(event);
+            shareFeed(event);
         }
     }
 }

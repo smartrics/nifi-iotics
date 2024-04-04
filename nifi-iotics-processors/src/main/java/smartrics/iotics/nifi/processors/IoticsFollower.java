@@ -35,6 +35,7 @@ import org.apache.nifi.processor.*;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.jetbrains.annotations.NotNull;
+import smartrics.iotics.identity.Identity;
 import smartrics.iotics.nifi.processors.objects.FollowerTwin;
 import smartrics.iotics.nifi.processors.objects.MyTwin;
 import smartrics.iotics.nifi.processors.objects.Port;
@@ -46,7 +47,6 @@ import java.io.InputStreamReader;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 import static org.apache.nifi.processor.util.StandardValidators.*;
@@ -140,7 +140,8 @@ public class IoticsFollower extends AbstractProcessor {
         String uniqueKeyName = context.getProperty(FOLLOWER_ID).getValue();
 
         FollowerTwin.FollowerModel model = new FollowerTwin.FollowerModel(label, comment, type);
-        FollowerTwin twin = new FollowerTwin(model, ioticsApi, uniqueKeyName, executor);
+        Identity ide = this.ioticsApi.getSim().newTwinIdentityWithControlDelegation(uniqueKeyName, "#deleg-" + uniqueKeyName.hashCode());
+        FollowerTwin twin = new FollowerTwin(model, ioticsApi, ide, executor);
 
         CountDownLatch latch = new CountDownLatch(1);
         Futures.addCallback(twin.make(), new FutureCallback<>() {

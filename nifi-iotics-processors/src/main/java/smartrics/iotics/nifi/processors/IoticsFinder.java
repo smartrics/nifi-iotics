@@ -28,7 +28,6 @@ import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.*;
 import org.apache.nifi.processor.exception.ProcessException;
-import org.apache.nifi.processor.util.StandardValidators;
 import smartrics.iotics.nifi.processors.objects.MyTwin;
 import smartrics.iotics.nifi.processors.objects.MyTwinList;
 import smartrics.iotics.nifi.processors.tools.JsonToProperty;

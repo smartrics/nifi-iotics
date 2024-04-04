@@ -13,11 +13,10 @@ import smartrics.iotics.space.twins.MappableMaker;
 import smartrics.iotics.space.twins.Mapper;
 
 import java.net.URI;
-import java.net.URL;
 import java.util.List;
 import java.util.concurrent.Executor;
 
-public class ConcreteTwin extends AbstractTwin implements MappableMaker<JsonObject>, Mapper<JsonObject> {
+public class ConcreteTwin extends AbstractTwin implements MappableMaker, Mapper {
 
     private final JsonObject source;
     private final String ontPrefix;
@@ -31,43 +30,37 @@ public class ConcreteTwin extends AbstractTwin implements MappableMaker<JsonObje
     }
 
     @Override
-    public Mapper<JsonObject> getMapper() {
+    public Mapper getMapper() {
         return this;
     }
 
     @Override
-    public JsonObject getTwinSource() {
-        return source;
-    }
-
-    @Override
-    public Identity getTwinIdentity(JsonObject jsonObject) {
+    public Identity getTwinIdentity() {
         return this.getIdentity();
     }
 
     @Override
-    public UpsertTwinRequest getUpsertTwinRequest(JsonObject jsonObject) {
-        UpsertTwinRequest.Builder reqBuilder = UpsertTwinRequest.newBuilder()
-                .setHeaders(Builders.newHeadersBuilder(super.ioticsApi().getSim().agentIdentity().did()));
+    public UpsertTwinRequest getUpsertTwinRequest() {
+        UpsertTwinRequest.Builder reqBuilder = UpsertTwinRequest.newBuilder().setHeaders(Builders.newHeadersBuilder(super.ioticsApi().getSim().agentIdentity().did()));
         Identity id = this.getIdentity();
         UpsertTwinRequest.Payload.Builder payloadBuilder = UpsertTwinRequest.Payload.newBuilder();
         payloadBuilder.setTwinId(TwinID.newBuilder().setId(id.did()));
         payloadBuilder.addProperties(Property.newBuilder().setKey("http://data.iotics.com/public#hostAllowList").setUriValue(Uri.newBuilder().setValue("http://data.iotics.com/public#allHosts").build()).build());
 
-        jsonObject.keySet().forEach(s -> {
-            JsonElement el = jsonObject.get(s);
-            if(el.isJsonPrimitive()) {
+        this.source.keySet().forEach(s -> {
+            JsonElement el = this.source.get(s);
+            if (el.isJsonPrimitive()) {
                 Property.Builder p;
                 try {
                     p = Property.newBuilder().setKey(asUri(ontPrefix, s).toString());
-                    if(el.getAsJsonPrimitive().isBoolean()) {
+                    if (el.getAsJsonPrimitive().isBoolean()) {
                         p.setLiteralValue(Literal.newBuilder().setDataType("boolean").setValue(el.getAsString().trim()).build());
-                    } else if(el.getAsJsonPrimitive().isNumber()) {
+                    } else if (el.getAsJsonPrimitive().isNumber()) {
                         p.setLiteralValue(Literal.newBuilder().setDataType("decimal").setValue(el.getAsString().trim()).build());
-                    } else if(el.getAsJsonPrimitive().isString()) {
+                    } else if (el.getAsJsonPrimitive().isString()) {
                         try {
                             URI uri = URI.create(el.getAsString().trim());
-                            if(uri.getScheme() == null) {
+                            if (uri.getScheme() == null) {
                                 p.setStringLiteralValue(StringLiteral.newBuilder().setValue(el.getAsString().trim()));
                             } else {
                                 p.setUriValue(Uri.newBuilder().setValue(uri.toString()));
@@ -79,7 +72,7 @@ public class ConcreteTwin extends AbstractTwin implements MappableMaker<JsonObje
                     }
                     payloadBuilder.addProperties(p);
                 } catch (InvalidProtocolBufferException e) {
-                    logger.info("invalid key: " + s , e);
+                    logger.info("invalid key: " + s, e);
                 }
             }
         });
@@ -99,7 +92,7 @@ public class ConcreteTwin extends AbstractTwin implements MappableMaker<JsonObje
     }
 
     @Override
-    public List<ShareFeedDataRequest> getShareFeedDataRequest(JsonObject jsonObject) {
+    public List<ShareFeedDataRequest> getShareFeedDataRequest() {
         return null;
     }
 }

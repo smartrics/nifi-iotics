@@ -20,13 +20,8 @@ import java.util.concurrent.Executor;
 import static smartrics.iotics.nifi.processors.Constants.RDF;
 import static smartrics.iotics.nifi.processors.Constants.RDFS;
 
-public class FollowerTwin extends AbstractTwin implements MappableMaker<FollowerTwin.FollowerModel>, Mapper<FollowerTwin.FollowerModel> {
+public class FollowerTwin extends AbstractTwin implements MappableMaker, Mapper {
     private final FollowerModel followerModel;
-
-    public FollowerTwin(FollowerModel model, IoticsApi api, String keyName, Executor executor) {
-        super(api, keyName, executor);
-        this.followerModel = model;
-    }
 
     public FollowerTwin(FollowerModel model, IoticsApi api, Identity identity, Executor executor) {
         super(api, identity, executor);
@@ -37,24 +32,19 @@ public class FollowerTwin extends AbstractTwin implements MappableMaker<Follower
     }
 
     @Override
-    public Mapper<FollowerModel> getMapper() {
+    public Mapper getMapper() {
         return this;
     }
 
     @Override
-    public FollowerTwin.FollowerModel getTwinSource() {
-        return this.followerModel;
-    }
-
-    @Override
-    public Identity getTwinIdentity(FollowerTwin.FollowerModel followerModel) {
+    public Identity getTwinIdentity() {
         return this.getIdentity();
     }
 
     @Override
-    public UpsertTwinRequest getUpsertTwinRequest(FollowerTwin.FollowerModel followerModel) {
+    public UpsertTwinRequest getUpsertTwinRequest() {
         UpsertTwinRequest.Builder reqBuilder = UpsertTwinRequest.newBuilder()
-                .setHeaders(Builders.newHeadersBuilder(super.ioticsApi().getSim().agentIdentity().did()));
+                .setHeaders(Builders.newHeadersBuilder(super.getAgentIdentity().did()));
         Identity id = this.getIdentity();
         UpsertTwinRequest.Payload.Builder payloadBuilder = UpsertTwinRequest.Payload.newBuilder();
         payloadBuilder.setTwinId(TwinID.newBuilder().setId(id.did()));
@@ -70,10 +60,9 @@ public class FollowerTwin extends AbstractTwin implements MappableMaker<Follower
 
         UpsertFeedWithMeta.Builder builder = UpsertFeedWithMeta.newBuilder().setId("status")
                 .setStoreLast(true)
-                .addProperties(Property.newBuilder().setKey(RDFS + "comment").setLiteralValue(Literal.newBuilder().setValue("Current operational status of this station").build()).build())
+                .addProperties(Property.newBuilder().setKey(RDFS + "comment").setLiteralValue(Literal.newBuilder().setValue("Current operational status of this follower").build()).build())
                 .addProperties(Property.newBuilder().setKey(RDFS + "label").setLiteralValue(Literal.newBuilder().setValue("OperationalStatus").build()).build());
         builder.addValues(Value.newBuilder().setLabel("isOperational").setDataType("boolean").setComment("true if operational").build());
-        builder.addValues(Value.newBuilder().setLabel("isRecentlyVerified").setDataType("boolean").setComment("true if recently verified").build());
 
         payloadBuilder.addFeeds(builder.build());
 
@@ -83,7 +72,7 @@ public class FollowerTwin extends AbstractTwin implements MappableMaker<Follower
     }
 
     @Override
-    public List<ShareFeedDataRequest> getShareFeedDataRequest(FollowerTwin.FollowerModel followerModel) {
+    public List<ShareFeedDataRequest> getShareFeedDataRequest() {
         FeedID statusFeedID = FeedID.newBuilder()
                 .setTwinId(getIdentity().did())
                 .setId("status")
