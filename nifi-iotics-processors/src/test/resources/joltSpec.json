@@ -1,0 +1,42 @@
+[
+  {
+    "operation": "modify-default-beta",
+    "spec": {
+      "*": {
+        "class": "https://schema.org/Car"
+      }
+    }
+  },
+  {
+    "operation": "modify-overwrite-beta",
+    "spec": {
+      "*": {
+        "label": "=concat(@(1,Make),' ',@(1,Model),' ',@(1,ID))"
+      }
+    }
+  },
+  {
+    "operation": "shift",
+    "spec": {
+      "*": {
+        "*": "data[#2].&"
+      }
+    }
+  },
+  {
+    "operation": "default",
+    "spec": {
+      "map": {
+        "class": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+        "ID": "https://data.iotics.com/nifi/id",
+        "Make": "https://data.iotics.com/nifi/make",
+        "label": "http://www.w3.org/2000/01/rdf-schema#label",
+        "Model": "https://schema.org/model",
+        "Colour": "https://schema.org/color",
+        "isOperational": "https://data.iotics.com/nifi/isOperational",
+        "Comment": "http://www.w3.org/2000/01/rdf-schema#comment",
+        "Units": "https://data.iotics.com/nifi/units"
+      }
+    }
+  }
+]
