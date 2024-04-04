@@ -19,6 +19,7 @@
         <module>nifi-iotics-hostservice</module>
         <module>nifi-iotics-processors</module>
         <module>nifi-iotics-nar</module>
+        <module>nifi-sample</module>
     </modules>
 
     <build>
