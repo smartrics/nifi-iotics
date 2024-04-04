@@ -46,13 +46,25 @@ public class BasicIoticsHostService extends AbstractControllerService implements
             .description("IOTICS API Authentication token duration in Seconds")
             .required(true)
             .defaultValue("3600")
-            .addValidator(StandardValidators.NON_BLANK_VALIDATOR)
+            .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
             .build();
 
-    public static final PropertyDescriptor SPACE_DNS = new PropertyDescriptor
-            .Builder().name("spaceDNS")
-            .displayName("Space DNS")
-            .description("The space dns, for example 'myspace.iotics.space'")
+    public static final PropertyDescriptor API_EXECUTOR_THREADS = new PropertyDescriptor
+            .Builder().name("apiExecutorThreads")
+            .displayName("Number of Threads for the IOTICS API")
+            .description("""
+The gRPC api client requires an executor to dispatch threads for async ops.
+This service uses a newFixedThreadPool executor and this setting decides how many threads this executor is configured with.
+            """)
+            .required(true)
+            .defaultValue("16")
+            .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
+            .build();
+
+    public static final PropertyDescriptor HOST_DNS = new PropertyDescriptor
+            .Builder().name("hostDNS")
+            .displayName("Host DNS")
+            .description("The host dns, for example 'myhost.iotics.space'")
             .required(true)
             .addValidator(StandardValidators.NON_BLANK_VALIDATOR)
             .build();
@@ -66,7 +78,7 @@ public class BasicIoticsHostService extends AbstractControllerService implements
         configuration = new Configuration(context);
         try {
             ioticsApi = Tools.newIoticsApi(configuration);
-            executor = Executors.newFixedThreadPool(16);
+            executor = Executors.newFixedThreadPool(configuration.apiExecutorThreads());
         } catch (IOException e) {
             throw new RuntimeException(e.getMessage(), e);
         }
@@ -97,6 +109,6 @@ public class BasicIoticsHostService extends AbstractControllerService implements
 
     protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
         // Return the list of properties your service supports
-        return Arrays.asList(SPACE_DNS, SEED, AGENT_KEY, USER_KEY, TOKEN_DURATION);
+        return Arrays.asList(HOST_DNS, SEED, AGENT_KEY, USER_KEY, TOKEN_DURATION, API_EXECUTOR_THREADS);
     }
 }
