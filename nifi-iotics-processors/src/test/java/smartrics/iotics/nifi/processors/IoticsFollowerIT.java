@@ -16,7 +16,7 @@ import java.util.concurrent.Executors;
 
 import static smartrics.iotics.nifi.processors.IoticsControllerServiceFactory.injectIoticsHostService;
 
-public class IoticsFollowerTest {
+public class IoticsFollowerIT {
     private TestRunner testRunner;
 
     @BeforeEach
@@ -30,9 +30,12 @@ public class IoticsFollowerTest {
         testRunner.setProperty(IoticsFollower.FOLLOWER_ID, "MyTestTwin08976576879089");
     }
 
-//    @Test
+
+    @Test
     public void testProcessor() throws IOException, InterruptedException {
+        // twins found by finder
         String content = Files.readString(Path.of("src\\test\\resources\\IoticsFinder.json"));
+
         testRunner.enqueue(content);
         testRunner.run(1);
         //assert the input Q is empty and the flowfile is processed

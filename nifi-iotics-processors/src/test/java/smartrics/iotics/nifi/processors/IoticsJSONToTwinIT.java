@@ -17,8 +17,9 @@
 package smartrics.iotics.nifi.processors;
 
 import com.google.gson.Gson;
-import org.apache.nifi.reporting.InitializationException;
-import org.apache.nifi.util.*;
+import org.apache.nifi.util.MockFlowFile;
+import org.apache.nifi.util.TestRunner;
+import org.apache.nifi.util.TestRunners;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -32,20 +33,19 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static smartrics.iotics.nifi.processors.IoticsControllerServiceFactory.injectIoticsHostService;
 
-public class IoticsJSONToTwinTest {
+public class IoticsJSONToTwinIT {
 
     private TestRunner testRunner;
 
     @BeforeEach
-    public void init() throws InitializationException {
+    public void init() throws Exception {
         testRunner = TestRunners.newTestRunner(IoticsJSONToTwin.class);
         injectIoticsHostService(testRunner);
         testRunner.setProperty(IoticsJSONToTwin.ONT_PREFIX, "https://data.iotics.com/nifi/");
         testRunner.setProperty(IoticsJSONToTwin.ID_PROP, "https://data.iotics.com/nifi/id");
     }
 
-    // @Test
-    // IntegrationTest
+    @Test
     public void testProcessor() throws IOException {
         String content = Files.readString(Path.of("src\\test\\resources\\twins.json"));
         testRunner.enqueue(content);

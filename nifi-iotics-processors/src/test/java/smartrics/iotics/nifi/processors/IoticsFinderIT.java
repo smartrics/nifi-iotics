@@ -7,11 +7,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.function.Consumer;
 
 import static smartrics.iotics.nifi.processors.IoticsControllerServiceFactory.injectIoticsHostService;
 
-public class IoticsFinderTest {
+public class IoticsFinderIT {
     private TestRunner testRunner;
 
     @BeforeEach
@@ -19,14 +18,15 @@ public class IoticsFinderTest {
         testRunner = TestRunners.newTestRunner(IoticsFinder.class);
         injectIoticsHostService(testRunner);
 
-        testRunner.setProperty(IoticsFinder.EXPIRY_TIMEOUT, "2");
+        testRunner.setProperty(IoticsFinder.EXPIRY_TIMEOUT, "10");
         testRunner.setProperty(IoticsFinder.LOCATION, "{ 'r': 5, 'lat': 52.568213, 'lon': -0.244837 }");
 //        testRunner.setProperty(IoticsFinder.TEXT, "");
 //        testRunner.setProperty(IoticsFinder.PROPERTIES);
         testRunner.setProperty(Constants.QUERY_SCOPE, "LOCAL");
     }
 
-//    @Test
+
+    @Test
     public void testProcessor() {
         testRunner.run(1);
         //assert the input Q is empty and the flowfile is processed

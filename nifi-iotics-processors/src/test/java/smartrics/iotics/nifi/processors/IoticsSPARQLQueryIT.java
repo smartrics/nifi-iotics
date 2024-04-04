@@ -13,7 +13,7 @@ import java.util.List;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static smartrics.iotics.nifi.processors.IoticsControllerServiceFactory.injectIoticsHostService;
 
-public class IoticsSPARQLQueryTest {
+public class IoticsSPARQLQueryIT {
     private TestRunner testRunner;
 
     @BeforeEach
@@ -25,7 +25,7 @@ public class IoticsSPARQLQueryTest {
         testRunner.setProperty(Constants.QUERY_SCOPE, "LOCAL");
     }
 
-    //@Test
+    @Test
     public void testProcessor() {
         testRunner.run(1);
         //assert the input Q is empty and the flowfile is processed

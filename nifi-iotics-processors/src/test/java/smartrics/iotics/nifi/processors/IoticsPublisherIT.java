@@ -13,7 +13,7 @@ import java.util.List;
 
 import static smartrics.iotics.nifi.processors.IoticsControllerServiceFactory.injectIoticsHostService;
 
-public class IoticsPublisherTest {
+public class IoticsPublisherIT {
     private TestRunner testRunner;
 
     @BeforeEach
@@ -23,7 +23,8 @@ public class IoticsPublisherTest {
         testRunner.setProperty(IoticsPublisher.DEBUG_FLAG, "true");
     }
 
-//    @Test
+
+    @Test
     public void testProcessor() throws IOException, InterruptedException {
         String content = Files.readString(Path.of("src\\test\\resources\\IoticsPublisher.json"));
         testRunner.enqueue(content);
