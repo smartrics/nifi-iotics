@@ -1,0 +1,112 @@
+[
+  {
+    "ID": "10",
+    "Make": "Subaru",
+    "Model": "Forester",
+    "Colour": "Brown",
+    "isOperational": "False",
+    "Comment": "Regularly serviced",
+    "Units": "16",
+    "class": "https://schema.org/Car",
+    "label": "Subaru Forester 10"
+  },
+  {
+    "ID": "11",
+    "Make": "Hyundai",
+    "Model": "Elantra",
+    "Colour": "Yellow",
+    "isOperational": "True",
+    "Comment": "Damaged in an accident, repaired",
+    "Units": "21",
+    "class": "https://schema.org/Car",
+    "label": "Hyundai Elantra 11"
+  },
+  {
+    "ID": "12",
+    "Make": "Subaru",
+    "Model": "Forester",
+    "Colour": "Brown",
+    "isOperational": "False",
+    "Comment": "Regularly serviced",
+    "Units": "2",
+    "class": "https://schema.org/Car",
+    "label": "Subaru Forester 12"
+  },
+  {
+    "ID": "13",
+    "Make": "BMW",
+    "Model": "3 Series",
+    "Colour": "Black",
+    "isOperational": "False",
+    "Comment": "Minor scratches",
+    "Units": "40",
+    "class": "https://schema.org/Car",
+    "label": "BMW 3 Series 13"
+  },
+  {
+    "ID": "14",
+    "Make": "Honda",
+    "Model": "Civic",
+    "Colour": "Grey",
+    "isOperational": "True",
+    "Comment": "One owner only",
+    "Units": "12",
+    "class": "https://schema.org/Car",
+    "label": "Honda Civic 14"
+  },
+  {
+    "ID": "15",
+    "Make": "Chevrolet",
+    "Model": "Impala",
+    "Colour": "White",
+    "isOperational": "False",
+    "Comment": "Low mileage",
+    "Units": "32",
+    "class": "https://schema.org/Car",
+    "label": "Chevrolet Impala 15"
+  },
+  {
+    "ID": "16",
+    "Make": "Volkswagen",
+    "Model": "Jetta",
+    "Colour": "Green",
+    "isOperational": "True",
+    "Comment": "High mileage, but runs great",
+    "Units": "41",
+    "class": "https://schema.org/Car",
+    "label": "Volkswagen Jetta 16"
+  },
+  {
+    "ID": "17",
+    "Make": "Mazda",
+    "Model": "CX-5",
+    "Colour": "Purple",
+    "isOperational": "False",
+    "Comment": "Minor scratches",
+    "Units": "25",
+    "class": "https://schema.org/Car",
+    "label": "Mazda CX-5 17"
+  },
+  {
+    "ID": "18",
+    "Make": "Chevrolet",
+    "Model": "Impala",
+    "Colour": "White",
+    "isOperational": "True",
+    "Comment": "Minor scratches",
+    "Units": "43",
+    "class": "https://schema.org/Car",
+    "label": "Chevrolet Impala 18"
+  },
+  {
+    "ID": "19",
+    "Make": "Mazda",
+    "Model": "CX-5",
+    "Colour": "Purple",
+    "isOperational": "True",
+    "Comment": "Well maintained",
+    "Units": "17",
+    "class": "https://schema.org/Car",
+    "label": "Mazda CX-5 19"
+  }
+]
