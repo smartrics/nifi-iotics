@@ -23,8 +23,6 @@ import com.iotics.api.SparqlQueryRequest;
 import com.iotics.api.SparqlQueryResponse;
 import io.grpc.stub.StreamObserver;
 import org.apache.nifi.annotation.behavior.ReadsAttribute;
-import org.apache.nifi.annotation.behavior.WritesAttribute;
-import org.apache.nifi.annotation.behavior.WritesAttributes;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.components.PropertyDescriptor;
@@ -32,9 +30,10 @@ import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.*;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
+import smartrics.iotics.host.Builders;
+import smartrics.iotics.host.IoticsApi;
+import smartrics.iotics.identity.SimpleIdentityManager;
 import smartrics.iotics.nifi.services.IoticsHostService;
-import smartrics.iotics.space.Builders;
-import smartrics.iotics.space.grpc.IoticsApi;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -60,6 +59,7 @@ public class IoticsSPARQLQuery extends AbstractProcessor {
 
     private Set<Relationship> relationships;
     private IoticsApi ioticsApi;
+    private SimpleIdentityManager sim;
 
     @Override
     protected void init(final ProcessorInitializationContext context) {
@@ -91,6 +91,7 @@ public class IoticsSPARQLQuery extends AbstractProcessor {
                 context.getProperty(IOTICS_HOST_SERVICE).asControllerService(IoticsHostService.class);
 
         this.ioticsApi  = ioticsHostService.getIoticsApi();
+        this.sim  = ioticsHostService.getSimpleIdentityManager();
 
         final FlowFile flowFile = session.create();
         String query = context.getProperty(SPARQL_QUERY).getValue();
@@ -117,8 +118,8 @@ public class IoticsSPARQLQuery extends AbstractProcessor {
         List<ByteString> chunks = Lists.newArrayList();
         CompletableFuture<String> resultFuture = new CompletableFuture<>();
         getLogger().debug("Running [" + scope + "] query: " + query);
-        this.ioticsApi.metaAPIStub().sparqlQuery(SparqlQueryRequest.newBuilder()
-                .setHeaders(Builders.newHeadersBuilder(this.ioticsApi.getSim().agentIdentity().did()))
+        this.ioticsApi.metaAPI().sparqlQuery(SparqlQueryRequest.newBuilder()
+                .setHeaders(Builders.newHeadersBuilder(sim.agentIdentity()))
                 .setScope(scope)
                 .setPayload(SparqlQueryRequest.Payload.newBuilder()
                         .setQuery(ByteString.copyFromUtf8(query))

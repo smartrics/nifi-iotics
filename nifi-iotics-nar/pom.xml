@@ -25,6 +25,12 @@
     <artifactId>nifi-iotics-nar</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>nar</packaging>
+    <name>${project.groupId}:${project.artifactId}</name>
+
+    <properties>
+        <nifi.version>2.0.0-M2</nifi.version>
+        <iotics.nifi.version>1.0-SNAPSHOT</iotics.nifi.version>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -35,12 +41,12 @@
         <dependency>
             <groupId>smartrics.iotics.nifi</groupId>
             <artifactId>nifi-iotics-hostservice</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>${iotics.nifi.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.nifi</groupId>
             <artifactId>nifi-standard-services-api-nar</artifactId>
-            <version>2.0.0-M2</version>
+            <version>${nifi.version}</version>
             <type>nar</type>
         </dependency>
     </dependencies>

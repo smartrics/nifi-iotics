@@ -7,7 +7,7 @@ import java.time.Duration;
 import static smartrics.iotics.nifi.services.BasicIoticsHostService.*;
 
 public record Configuration(String seed, String userKey, String agentKey,
-                            String host, Integer tokenDuration,
+                            String hostDNS, Integer tokenDuration,
                             Integer apiExecutorThreads) {
 
 

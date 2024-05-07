@@ -4,12 +4,13 @@ import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.protobuf.ByteString;
 import com.iotics.api.*;
+import smartrics.iotics.connectors.twins.AbstractTwin;
+import smartrics.iotics.connectors.twins.MappableMaker;
+import smartrics.iotics.connectors.twins.Mapper;
+import smartrics.iotics.host.Builders;
+import smartrics.iotics.host.IoticsApi;
 import smartrics.iotics.identity.Identity;
-import smartrics.iotics.space.Builders;
-import smartrics.iotics.space.grpc.IoticsApi;
-import smartrics.iotics.space.twins.AbstractTwin;
-import smartrics.iotics.space.twins.MappableMaker;
-import smartrics.iotics.space.twins.Mapper;
+import smartrics.iotics.identity.SimpleIdentityManager;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -23,8 +24,8 @@ import static smartrics.iotics.nifi.processors.Constants.RDFS;
 public class FollowerTwin extends AbstractTwin implements MappableMaker, Mapper {
     private final FollowerModel followerModel;
 
-    public FollowerTwin(FollowerModel model, IoticsApi api, Identity identity, Executor executor) {
-        super(api, identity, executor);
+    public FollowerTwin(FollowerModel model, IoticsApi api, SimpleIdentityManager sim, Identity myIdentity) {
+        super(api, sim, myIdentity);
         this.followerModel = model;
     }
 
@@ -37,15 +38,10 @@ public class FollowerTwin extends AbstractTwin implements MappableMaker, Mapper 
     }
 
     @Override
-    public Identity getTwinIdentity() {
-        return this.getIdentity();
-    }
-
-    @Override
     public UpsertTwinRequest getUpsertTwinRequest() {
         UpsertTwinRequest.Builder reqBuilder = UpsertTwinRequest.newBuilder()
-                .setHeaders(Builders.newHeadersBuilder(super.getAgentIdentity().did()));
-        Identity id = this.getIdentity();
+                .setHeaders(Builders.newHeadersBuilder(super.getAgentIdentity()));
+        Identity id = super.getMyIdentity();
         UpsertTwinRequest.Payload.Builder payloadBuilder = UpsertTwinRequest.Payload.newBuilder();
         payloadBuilder.setTwinId(TwinID.newBuilder().setId(id.did()));
         payloadBuilder.addProperties(Property.newBuilder().setKey(RDFS + "label")
@@ -74,12 +70,12 @@ public class FollowerTwin extends AbstractTwin implements MappableMaker, Mapper 
     @Override
     public List<ShareFeedDataRequest> getShareFeedDataRequest() {
         FeedID statusFeedID = FeedID.newBuilder()
-                .setTwinId(getIdentity().did())
+                .setTwinId(super.getMyIdentity().did())
                 .setId("status")
                 .build();
 
         ShareFeedDataRequest request = ShareFeedDataRequest.newBuilder()
-                .setHeaders(Builders.newHeadersBuilder(ioticsApi().getSim().agentIdentity().did()).build())
+                .setHeaders(Builders.newHeadersBuilder(super.getAgentIdentity()).build())
                 .setPayload(ShareFeedDataRequest.Payload.newBuilder().setSample(FeedData.newBuilder()
                         .setData(ByteString.copyFrom(makeStatusPayload().getBytes(StandardCharsets.UTF_8))).build()).build())
                 .setArgs(ShareFeedDataRequest.Arguments.newBuilder()

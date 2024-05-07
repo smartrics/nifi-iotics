@@ -40,9 +40,11 @@ import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.jetbrains.annotations.NotNull;
+import smartrics.iotics.host.IoticsApi;
+import smartrics.iotics.identity.Identity;
+import smartrics.iotics.identity.SimpleIdentityManager;
 import smartrics.iotics.nifi.processors.objects.ConcreteTwin;
 import smartrics.iotics.nifi.services.IoticsHostService;
-import smartrics.iotics.space.grpc.IoticsApi;
 
 import java.io.InputStreamReader;
 import java.util.*;
@@ -92,6 +94,7 @@ public class IoticsJSONToTwin extends AbstractProcessor {
 
     private Set<Relationship> relationships;
     private IoticsApi ioticsApi;
+    private SimpleIdentityManager sim;
     private ExecutorService executor;
 
     @Override
@@ -141,15 +144,16 @@ public class IoticsJSONToTwin extends AbstractProcessor {
 
         // process
         String jsonIdProp = context.getProperty(ID_PROP).getValue();
-        String keyName = jsonObject.get(context.getProperty(ID_PROP).getValue()).getAsString();
+        String keyName = jsonObject.get(jsonIdProp).getAsString();
         String ontPrefix = context.getProperty(ONT_PREFIX).getValue();
         getLogger().info("Processing JSON object with keyName " + keyName);
         if(keyName == null) {
             getLogger().warn("Failed to read json object ID property '" + jsonIdProp + "', skipping");
             return Optional.empty();
         } else {
-            ConcreteTwin twin = new ConcreteTwin(getLogger(), ioticsApi, jsonObject, ontPrefix, keyName, executor);
-            return Optional.of(twin.make());
+            Identity myIdentity = sim.newTwinIdentity(keyName, "#masterKey");
+            ConcreteTwin twin = new ConcreteTwin(getLogger(), ioticsApi, sim, jsonObject, ontPrefix, myIdentity);
+            return Optional.of(twin.upsert());
         }
     }
 
@@ -159,6 +163,7 @@ public class IoticsJSONToTwin extends AbstractProcessor {
                 context.getProperty(IOTICS_HOST_SERVICE).asControllerService(IoticsHostService.class);
 
         this.ioticsApi  = ioticsHostService.getIoticsApi();
+        this.sim  = ioticsHostService.getSimpleIdentityManager();
         this.executor = ioticsHostService.getExecutor();
         
         final AtomicReference<JsonObject> value = new AtomicReference<>();

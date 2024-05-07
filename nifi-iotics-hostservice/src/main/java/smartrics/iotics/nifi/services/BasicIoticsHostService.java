@@ -6,9 +6,9 @@ import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.controller.AbstractControllerService;
 import org.apache.nifi.controller.ConfigurationContext;
 import org.apache.nifi.processor.util.StandardValidators;
-import smartrics.iotics.space.grpc.IoticsApi;
+import smartrics.iotics.host.IoticsApi;
+import smartrics.iotics.identity.SimpleIdentityManager;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -72,16 +72,15 @@ This service uses a newFixedThreadPool executor and this setting decides how man
     private Configuration configuration;
     private ExecutorService executor;
     private IoticsApi ioticsApi;
+    private SimpleIdentityManager sim;
 
     @OnEnabled
     public void onEnabled(final ConfigurationContext context) {
         configuration = new Configuration(context);
-        try {
-            ioticsApi = Tools.newIoticsApi(configuration);
-            executor = Executors.newFixedThreadPool(configuration.apiExecutorThreads());
-        } catch (IOException e) {
-            throw new RuntimeException(e.getMessage(), e);
-        }
+        Iotics iotics = Iotics.Builder.newBuilder().withConfiguration(configuration).build();
+        ioticsApi = iotics.api();
+        sim = iotics.sim();
+        executor = Executors.newFixedThreadPool(configuration.apiExecutorThreads());
     }
 
     public Configuration getConfiguration() {
@@ -94,6 +93,10 @@ This service uses a newFixedThreadPool executor and this setting decides how man
 
     public IoticsApi getIoticsApi() {
         return ioticsApi;
+    }
+
+    public SimpleIdentityManager getSimpleIdentityManager() {
+        return sim;
     }
 
     @OnDisabled

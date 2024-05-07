@@ -5,16 +5,20 @@ import com.google.gson.JsonObject;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.iotics.api.*;
 import org.apache.nifi.logging.ComponentLog;
+import smartrics.iotics.connectors.twins.AbstractTwin;
+import smartrics.iotics.connectors.twins.MappableMaker;
+import smartrics.iotics.connectors.twins.Mapper;
+import smartrics.iotics.connectors.twins.annotations.XsdDatatype;
+import smartrics.iotics.host.Builders;
+import smartrics.iotics.host.IoticsApi;
+import smartrics.iotics.host.UriConstants;
 import smartrics.iotics.identity.Identity;
-import smartrics.iotics.space.Builders;
-import smartrics.iotics.space.grpc.IoticsApi;
-import smartrics.iotics.space.twins.AbstractTwin;
-import smartrics.iotics.space.twins.MappableMaker;
-import smartrics.iotics.space.twins.Mapper;
+import smartrics.iotics.identity.SimpleIdentityManager;
+import smartrics.iotics.nifi.processors.tools.DateTypeDetector;
 
 import java.net.URI;
 import java.util.List;
-import java.util.concurrent.Executor;
+import java.util.function.Consumer;
 
 public class ConcreteTwin extends AbstractTwin implements MappableMaker, Mapper {
 
@@ -22,8 +26,8 @@ public class ConcreteTwin extends AbstractTwin implements MappableMaker, Mapper 
     private final String ontPrefix;
     private final ComponentLog logger;
 
-    public ConcreteTwin(ComponentLog logger, IoticsApi api, JsonObject source, String ontPrefix, String keyName, Executor executor) {
-        super(api, keyName, executor);
+    public ConcreteTwin(ComponentLog logger, IoticsApi api, SimpleIdentityManager sim, JsonObject source, String ontPrefix, Identity myIdentity) {
+        super(api, sim, myIdentity);
         this.source = source;
         this.ontPrefix = ontPrefix;
         this.logger = logger;
@@ -35,40 +39,44 @@ public class ConcreteTwin extends AbstractTwin implements MappableMaker, Mapper 
     }
 
     @Override
-    public Identity getTwinIdentity() {
-        return this.getIdentity();
-    }
-
-    @Override
     public UpsertTwinRequest getUpsertTwinRequest() {
-        UpsertTwinRequest.Builder reqBuilder = UpsertTwinRequest.newBuilder().setHeaders(Builders.newHeadersBuilder(super.ioticsApi().getSim().agentIdentity().did()));
-        Identity id = this.getIdentity();
+        UpsertTwinRequest.Builder reqBuilder = UpsertTwinRequest
+                .newBuilder()
+                .setHeaders(Builders.newHeadersBuilder(super.getAgentIdentity()));
         UpsertTwinRequest.Payload.Builder payloadBuilder = UpsertTwinRequest.Payload.newBuilder();
-        payloadBuilder.setTwinId(TwinID.newBuilder().setId(id.did()));
-        payloadBuilder.addProperties(Property.newBuilder().setKey("http://data.iotics.com/public#hostAllowList").setUriValue(Uri.newBuilder().setValue("http://data.iotics.com/public#allHosts").build()).build());
+        payloadBuilder.setTwinId(TwinID.newBuilder().setId(super.getMyIdentity().did()));
+        // should externalise
+        payloadBuilder.addProperties(
+                Property.newBuilder().setKey(UriConstants.IOTICSProperties.HostAllowListName)
+                        .setUriValue(Uri.newBuilder().setValue(UriConstants.IOTICSProperties.HostAllowListValues.ALL.toString())
+                                .build())
+                        .build());
 
         this.source.keySet().forEach(s -> {
             JsonElement el = this.source.get(s);
             if (el.isJsonPrimitive()) {
                 Property.Builder p;
                 try {
-                    p = Property.newBuilder().setKey(asUri(ontPrefix, s).toString());
+                    URI keyUri = asUri(ontPrefix, s);
+                    p = Property.newBuilder().setKey(keyUri.toString());
                     if (el.getAsJsonPrimitive().isBoolean()) {
                         p.setLiteralValue(Literal.newBuilder().setDataType("boolean").setValue(el.getAsString().trim()).build());
                     } else if (el.getAsJsonPrimitive().isNumber()) {
                         p.setLiteralValue(Literal.newBuilder().setDataType("decimal").setValue(el.getAsString().trim()).build());
-                    } else if (el.getAsJsonPrimitive().isString()) {
-                        try {
-                            URI uri = URI.create(el.getAsString().trim());
-                            if (uri.getScheme() == null) {
-                                p.setStringLiteralValue(StringLiteral.newBuilder().setValue(el.getAsString().trim()));
-                            } else {
-                                p.setUriValue(Uri.newBuilder().setValue(uri.toString()));
+                    } else /* if (el.getAsJsonPrimitive().isString()) */ {
+                        String trimmed = el.getAsString().trim();
+                        DateTypeDetector.detectDateTimeType(trimmed).ifPresentOrElse(xsdDatatype -> p.setLiteralValue(Literal.newBuilder().setDataType(xsdDatatype.toString()).setValue(trimmed).build()), () -> {
+                            try {
+                                URI uri = URI.create(trimmed);
+                                if (uri.isAbsolute()) {
+                                    p.setUriValue(Uri.newBuilder().setValue(uri.toString()));
+                                } else {
+                                    p.setStringLiteralValue(StringLiteral.newBuilder().setValue(trimmed));
+                                }
+                            } catch (Exception e) {
+                                p.setStringLiteralValue(StringLiteral.newBuilder().setValue(trimmed));
                             }
-                        } catch (Exception e) {
-                            p.setStringLiteralValue(StringLiteral.newBuilder().setValue(el.getAsString().trim()));
-                        }
-                        // should parse date and timestamps
+                        });
                     }
                     payloadBuilder.addProperties(p);
                 } catch (InvalidProtocolBufferException e) {
@@ -85,14 +93,19 @@ public class ConcreteTwin extends AbstractTwin implements MappableMaker, Mapper 
 
     private URI asUri(String prefix, String s) throws InvalidProtocolBufferException {
         try {
-            return URI.create(s);
+            URI temp = URI.create(s);
+            if (temp.isAbsolute()) {
+                return temp;
+            }
         } catch (Exception e) {
-            return URI.create(String.join(prefix, "#", s));
+            // fall back to prefix
         }
+        return URI.create(prefix + s);
     }
 
     @Override
     public List<ShareFeedDataRequest> getShareFeedDataRequest() {
         return null;
     }
+
 }

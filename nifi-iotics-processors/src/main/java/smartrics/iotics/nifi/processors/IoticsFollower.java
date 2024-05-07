@@ -35,13 +35,14 @@ import org.apache.nifi.processor.*;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.jetbrains.annotations.NotNull;
+import smartrics.iotics.host.Builders;
+import smartrics.iotics.host.IoticsApi;
 import smartrics.iotics.identity.Identity;
+import smartrics.iotics.identity.SimpleIdentityManager;
 import smartrics.iotics.nifi.processors.objects.FollowerTwin;
 import smartrics.iotics.nifi.processors.objects.MyTwin;
 import smartrics.iotics.nifi.processors.objects.Port;
 import smartrics.iotics.nifi.services.IoticsHostService;
-import smartrics.iotics.space.Builders;
-import smartrics.iotics.space.grpc.IoticsApi;
 
 import java.io.InputStreamReader;
 import java.util.*;
@@ -94,6 +95,7 @@ public class IoticsFollower extends AbstractProcessor {
     private List<PropertyDescriptor> descriptors;
     private Set<Relationship> relationships;
     private IoticsApi ioticsApi;
+    private SimpleIdentityManager sim;
     private ExecutorService executor;
 
     @Override
@@ -132,6 +134,7 @@ public class IoticsFollower extends AbstractProcessor {
                 context.getProperty(IOTICS_HOST_SERVICE).asControllerService(IoticsHostService.class);
 
         this.ioticsApi = ioticsHostService.getIoticsApi();
+        this.sim = ioticsHostService.getSimpleIdentityManager();
         this.executor = ioticsHostService.getExecutor();
 
         String label = context.getProperty(FOLLOWER_LABEL).getValue();
@@ -140,11 +143,11 @@ public class IoticsFollower extends AbstractProcessor {
         String uniqueKeyName = context.getProperty(FOLLOWER_ID).getValue();
 
         FollowerTwin.FollowerModel model = new FollowerTwin.FollowerModel(label, comment, type);
-        Identity ide = this.ioticsApi.getSim().newTwinIdentityWithControlDelegation(uniqueKeyName, "#deleg-" + uniqueKeyName.hashCode());
-        FollowerTwin twin = new FollowerTwin(model, ioticsApi, ide, executor);
+        Identity ide = this.sim.newTwinIdentityWithControlDelegation(uniqueKeyName, "#deleg-" + uniqueKeyName.hashCode());
+        FollowerTwin twin = new FollowerTwin(model, ioticsApi, sim, ide);
 
         CountDownLatch latch = new CountDownLatch(1);
-        Futures.addCallback(twin.make(), new FutureCallback<>() {
+        Futures.addCallback(twin.upsert(), new FutureCallback<>() {
             @Override
             public void onSuccess(UpsertTwinResponse result) {
                 String followerDid = result.getPayload().getTwinId().getId();
@@ -213,7 +216,7 @@ public class IoticsFollower extends AbstractProcessor {
     private void doFollow(String followerDid, String hostId, String twinId, ProcessSession session, Port feedDetails, Consumer<FetchInterestResponse> consumer) {
         FetchInterestRequest request = newFetchInterestRequest(followerDid, hostId, twinId, feedDetails);
         getLogger().info("FOLLOW {}/{}/{}", hostId, twinId, feedDetails.id());
-        this.ioticsApi.interestAPIStub().fetchInterests(request, new StreamObserver<>() {
+        this.ioticsApi.interestAPI().fetchInterests(request, new StreamObserver<>() {
             @Override
             public void onNext(FetchInterestResponse fetchInterestResponse) {
                 consumer.accept(fetchInterestResponse);
@@ -252,7 +255,7 @@ public class IoticsFollower extends AbstractProcessor {
     @NotNull
     private FetchInterestRequest newFetchInterestRequest(String followerDid, String hostId, String twinId, Port feedDetails) {
         return FetchInterestRequest.newBuilder()
-                .setHeaders(Builders.newHeadersBuilder(ioticsApi.getSim().agentIdentity().did()))
+                .setHeaders(Builders.newHeadersBuilder(sim.agentIdentity()))
                 .setFetchLastStored(BoolValue.newBuilder().setValue(true).build())
                 .setArgs(FetchInterestRequest.Arguments.newBuilder()
                         .setInterest(Interest.newBuilder()

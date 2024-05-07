@@ -28,13 +28,14 @@ import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.*;
 import org.apache.nifi.processor.exception.ProcessException;
+import smartrics.iotics.host.IoticsApi;
+import smartrics.iotics.identity.SimpleIdentityManager;
 import smartrics.iotics.nifi.processors.objects.MyTwin;
 import smartrics.iotics.nifi.processors.objects.MyTwinList;
 import smartrics.iotics.nifi.processors.tools.JsonToProperty;
 import smartrics.iotics.nifi.processors.tools.LocationValidator;
 import smartrics.iotics.nifi.services.IoticsHostService;
-import smartrics.iotics.space.Builders;
-import smartrics.iotics.space.grpc.IoticsApi;
+import smartrics.iotics.host.Builders;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -86,6 +87,7 @@ public class IoticsFinder extends AbstractProcessor {
     private List<PropertyDescriptor> descriptors;
     private Set<Relationship> relationships;
     private IoticsApi ioticsApi;
+    private SimpleIdentityManager sim;
 
     @Override
     protected void init(final ProcessorInitializationContext context) {
@@ -120,6 +122,7 @@ public class IoticsFinder extends AbstractProcessor {
                 context.getProperty(IOTICS_HOST_SERVICE).asControllerService(IoticsHostService.class);
 
         this.ioticsApi = ioticsHostService.getIoticsApi();
+        this.sim = ioticsHostService.getSimpleIdentityManager();
 
         // TODO: get the search object from the flowfile
         //  FlowFile flowFile = session.get();
@@ -157,7 +160,7 @@ public class IoticsFinder extends AbstractProcessor {
     }
 
     private void search(ProcessSession session, SearchRequest searchRequest) {
-        ioticsApi.searchAPIStub().synchronousSearch(searchRequest, new StreamObserver<>() {
+        ioticsApi.searchAPI().synchronousSearch(searchRequest, new StreamObserver<>() {
             @Override
             public void onNext(SearchResponse searchResponse) {
                 getLogger().info("Found twins [n={}]", searchResponse.getPayload().getTwinsList().size());
@@ -225,7 +228,7 @@ public class IoticsFinder extends AbstractProcessor {
                 .setFilter(filterBuilder);
 
         SearchRequest.Builder builder = SearchRequest.newBuilder()
-                .setHeaders(Builders.newHeadersBuilder(this.ioticsApi.getSim().agentIdentity().did()))
+                .setHeaders(Builders.newHeadersBuilder(this.sim.agentIdentity()))
                 .setScope(scope)
                 .setPayload(payloadBuilder);
 

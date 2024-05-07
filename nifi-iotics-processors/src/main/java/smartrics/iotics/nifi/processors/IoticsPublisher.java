@@ -40,11 +40,12 @@ import org.apache.nifi.processor.*;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.jetbrains.annotations.NotNull;
+import smartrics.iotics.host.Builders;
+import smartrics.iotics.host.IoticsApi;
+import smartrics.iotics.identity.SimpleIdentityManager;
 import smartrics.iotics.nifi.processors.objects.MyTwin;
 import smartrics.iotics.nifi.processors.objects.Port;
 import smartrics.iotics.nifi.services.IoticsHostService;
-import smartrics.iotics.space.Builders;
-import smartrics.iotics.space.grpc.IoticsApi;
 
 import java.io.InputStreamReader;
 import java.lang.reflect.Type;
@@ -76,6 +77,7 @@ public class IoticsPublisher extends AbstractProcessor {
     private List<PropertyDescriptor> descriptors;
     private Set<Relationship> relationships;
     private IoticsApi ioticsApi;
+    private SimpleIdentityManager sim;
     private ExecutorService executor;
 
     private static void transferFailure(StreamEvent event, Throwable t) {
@@ -131,6 +133,7 @@ public class IoticsPublisher extends AbstractProcessor {
         IoticsHostService ioticsHostService =
                 context.getProperty(IOTICS_HOST_SERVICE).asControllerService(IoticsHostService.class);
         this.ioticsApi = ioticsHostService.getIoticsApi();
+        this.sim = ioticsHostService.getSimpleIdentityManager();
         this.executor = ioticsHostService.getExecutor();
 
         Boolean debugOn = context.getProperty(DEBUG_FLAG).asBoolean();
@@ -191,7 +194,7 @@ public class IoticsPublisher extends AbstractProcessor {
             if (request == null) {
                 return;
             }
-            ListenableFuture<ShareFeedDataResponse> res = ioticsApi.feedAPIFutureStub().shareFeedData(request);
+            ListenableFuture<ShareFeedDataResponse> res = ioticsApi.feedAPIFuture().shareFeedData(request);
             Futures.addCallback(res, new FutureCallback<>() {
 
                 @Override
@@ -218,7 +221,7 @@ public class IoticsPublisher extends AbstractProcessor {
             return null;
         }
         return ShareFeedDataRequest.newBuilder()
-                .setHeaders(Builders.newHeadersBuilder(ioticsApi.getSim().agentIdentity().did()))
+                .setHeaders(Builders.newHeadersBuilder(sim.agentIdentity()))
                 .setArgs(ShareFeedDataRequest.Arguments.newBuilder()
                         .setFeedId(FeedID.newBuilder()
                                 .setHostId(event.myTwin().hostDid())

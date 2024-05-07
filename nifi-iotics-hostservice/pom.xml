@@ -24,28 +24,35 @@
 
     <artifactId>nifi-iotics-hostservice</artifactId>
     <packaging>jar</packaging>
+    <name>${project.groupId}:${project.artifactId}</name>
+
+    <properties>
+        <nifi.version>2.0.0-M2</nifi.version>
+        <iotics4j.version>1.0</iotics4j.version>
+    </properties>
 
     <dependencies>
         <dependency>
             <groupId>org.apache.nifi</groupId>
             <artifactId>nifi-api</artifactId>
-            <version>2.0.0-M2</version>
+            <version>${nifi.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.nifi</groupId>
             <artifactId>nifi-utils</artifactId>
-            <version>2.0.0-M2</version>
+            <version>${nifi.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>smartrics.iotics</groupId>
-            <artifactId>iotics-java-agent</artifactId>
-            <version>0.0.2-SNAPSHOT</version>
+            <artifactId>iotics-agent-core</artifactId>
+            <version>${iotics4j.version}</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/smartrics.iotics/iotics-identity-java -->
         <dependency>
             <groupId>smartrics.iotics</groupId>
-            <artifactId>iotics-identity-java</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <artifactId>iotics-identity-core</artifactId>
+            <version>${iotics4j.version}</version>
         </dependency>
     </dependencies>
 
