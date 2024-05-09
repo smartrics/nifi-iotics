@@ -8,7 +8,6 @@ import org.apache.nifi.logging.ComponentLog;
 import smartrics.iotics.connectors.twins.AbstractTwin;
 import smartrics.iotics.connectors.twins.MappableMaker;
 import smartrics.iotics.connectors.twins.Mapper;
-import smartrics.iotics.connectors.twins.annotations.XsdDatatype;
 import smartrics.iotics.host.Builders;
 import smartrics.iotics.host.IoticsApi;
 import smartrics.iotics.host.UriConstants;
@@ -18,7 +17,6 @@ import smartrics.iotics.nifi.processors.tools.DateTypeDetector;
 
 import java.net.URI;
 import java.util.List;
-import java.util.function.Consumer;
 
 public class ConcreteTwin extends AbstractTwin implements MappableMaker, Mapper {
 

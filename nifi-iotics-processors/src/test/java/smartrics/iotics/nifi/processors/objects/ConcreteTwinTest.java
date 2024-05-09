@@ -23,12 +23,21 @@ import static org.mockito.Mockito.when;
 public class ConcreteTwinTest {
 
     public static final String ONT_PREFIX = "http://hello.com/ont#";
+    private final Identity agentIdentity = new Identity("aKey", "aName", "did:iotics:234");
+    private final Identity myIdentity = new Identity("tKey", "tName", "did:iotics:432");
     private ComponentLog loggerMock;
     private IoticsApi apiMock;
     private SimpleIdentityManager simMock;
 
-    private final Identity agentIdentity = new Identity("aKey", "aName", "did:iotics:234");
-    private final Identity myIdentity = new Identity("tKey", "tName", "did:iotics:432");
+    private static @NotNull Property getPropByKey(UpsertTwinRequest request, String keyToFind) {
+        Stream<Property> stream = request.getPayload().getPropertiesList().stream();
+        return stream.filter(property -> property.getKey().equals(keyToFind)).findFirst().orElseThrow();
+    }
+
+    private static boolean hasPropByKey(UpsertTwinRequest request, String keyToFind) {
+        Stream<Property> stream = request.getPayload().getPropertiesList().stream();
+        return stream.anyMatch(property -> property.getKey().equals(keyToFind));
+    }
 
     @BeforeEach
     void setUp() {
@@ -132,16 +141,6 @@ public class ConcreteTwinTest {
 
     private @NotNull ConcreteTwin aConcreteTwin(JsonObject source) {
         return new ConcreteTwin(loggerMock, apiMock, simMock, source, ONT_PREFIX, myIdentity);
-    }
-
-    private static @NotNull Property getPropByKey(UpsertTwinRequest request, String keyToFind) {
-        Stream<Property> stream = request.getPayload().getPropertiesList().stream();
-        return stream.filter(property -> property.getKey().equals(keyToFind)).findFirst().orElseThrow();
-    }
-
-    private static boolean hasPropByKey(UpsertTwinRequest request, String keyToFind) {
-        Stream<Property> stream = request.getPayload().getPropertiesList().stream();
-        return stream.anyMatch(property -> property.getKey().equals(keyToFind));
     }
 
 

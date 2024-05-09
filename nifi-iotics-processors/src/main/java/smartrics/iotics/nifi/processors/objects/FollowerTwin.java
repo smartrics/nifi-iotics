@@ -1,9 +1,5 @@
 package smartrics.iotics.nifi.processors.objects;
 
-import com.google.common.collect.Lists;
-import com.google.gson.Gson;
-import com.google.protobuf.ByteString;
-import com.iotics.api.*;
 import smartrics.iotics.connectors.twins.AbstractTwin;
 import smartrics.iotics.connectors.twins.AnnotationMapper;
 import smartrics.iotics.connectors.twins.MappableMaker;
@@ -12,19 +8,10 @@ import smartrics.iotics.connectors.twins.annotations.Feed;
 import smartrics.iotics.connectors.twins.annotations.PayloadValue;
 import smartrics.iotics.connectors.twins.annotations.StringLiteralProperty;
 import smartrics.iotics.connectors.twins.annotations.UriProperty;
-import smartrics.iotics.host.Builders;
 import smartrics.iotics.host.IoticsApi;
 import smartrics.iotics.host.UriConstants;
 import smartrics.iotics.identity.Identity;
 import smartrics.iotics.identity.SimpleIdentityManager;
-
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static smartrics.iotics.nifi.processors.Constants.RDF;
-import static smartrics.iotics.nifi.processors.Constants.RDFS;
 
 public class FollowerTwin extends AbstractTwin implements MappableMaker, Mapper, AnnotationMapper {
     private final FollowerModel followerModel;
@@ -54,9 +41,6 @@ public class FollowerTwin extends AbstractTwin implements MappableMaker, Mapper,
         return followerModel.comment();
     }
 
-    public record FollowerModel(String label, String comment, String type) {
-    }
-
     @Override
     public Mapper getMapper() {
         return this;
@@ -65,6 +49,9 @@ public class FollowerTwin extends AbstractTwin implements MappableMaker, Mapper,
     @Feed(id = "status")
     public OperationalStatus newOperationalStatus() {
         return new OperationalStatus(true);
+    }
+
+    public record FollowerModel(String label, String comment, String type) {
     }
 
     public record OperationalStatus(

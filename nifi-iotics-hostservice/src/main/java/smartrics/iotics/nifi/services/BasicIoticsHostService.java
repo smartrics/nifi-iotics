@@ -53,9 +53,9 @@ public class BasicIoticsHostService extends AbstractControllerService implements
             .Builder().name("apiExecutorThreads")
             .displayName("Number of Threads for the IOTICS API")
             .description("""
-The gRPC api client requires an executor to dispatch threads for async ops.
-This service uses a newFixedThreadPool executor and this setting decides how many threads this executor is configured with.
-            """)
+                    The gRPC api client requires an executor to dispatch threads for async ops.
+                    This service uses a newFixedThreadPool executor and this setting decides how many threads this executor is configured with.
+                                """)
             .required(true)
             .defaultValue("16")
             .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
@@ -102,10 +102,10 @@ This service uses a newFixedThreadPool executor and this setting decides how man
     @OnDisabled
     public void onDisabled() {
         // Called when the service is disabled, use it to teardown your service
-        if(executor!=null) {
+        if (executor != null) {
             executor.shutdown();
         }
-        if(ioticsApi!=null) {
+        if (ioticsApi != null) {
             ioticsApi.stop(Duration.ofMillis(1000));
         }
     }

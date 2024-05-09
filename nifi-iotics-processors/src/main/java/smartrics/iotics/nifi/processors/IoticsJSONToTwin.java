@@ -24,19 +24,15 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.iotics.api.UpsertTwinResponse;
-import org.apache.nifi.components.PropertyDescriptor;
-import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.annotation.behavior.ReadsAttribute;
 import org.apache.nifi.annotation.behavior.ReadsAttributes;
 import org.apache.nifi.annotation.behavior.WritesAttribute;
 import org.apache.nifi.annotation.behavior.WritesAttributes;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
-import org.apache.nifi.processor.AbstractProcessor;
-import org.apache.nifi.processor.ProcessContext;
-import org.apache.nifi.processor.ProcessSession;
-import org.apache.nifi.processor.ProcessorInitializationContext;
-import org.apache.nifi.processor.Relationship;
+import org.apache.nifi.components.PropertyDescriptor;
+import org.apache.nifi.flowfile.FlowFile;
+import org.apache.nifi.processor.*;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.jetbrains.annotations.NotNull;
@@ -56,21 +52,21 @@ import static smartrics.iotics.nifi.processors.Constants.*;
 
 @Tags({"IOTICS", "TWIN CREATOR"})
 @CapabilityDescription("""
-Simple test to create twins from a template in JSON.
-The JSON must have the following structure:
+        Simple test to create twins from a template in JSON.
+        The JSON must have the following structure:
 
-{ "data" : [ { <key-value-pairs> }, {}, ... ], "map": { <map of keys to ontology> } }
- 
-"data" is an array of json objects, each <key-value-pair> object is a set of string keys mapping to a
-value of numeric, boolean or string type.
+        { "data" : [ { <key-value-pairs> }, {}, ... ], "map": { <map of keys to ontology> } }
+         
+        "data" is an array of json objects, each <key-value-pair> object is a set of string keys mapping to a
+        value of numeric, boolean or string type.
 
-the "map" contains the mapping between the key in the <key-value-pairs> and a URI.
+        the "map" contains the mapping between the key in the <key-value-pairs> and a URI.
 
-Each object is a twin with properties having the key equal to the URI and the value equal to the value in the object.
-        
-""")
-@ReadsAttributes({@ReadsAttribute(attribute="", description="")})
-@WritesAttributes({@WritesAttribute(attribute="", description="")})
+        Each object is a twin with properties having the key equal to the URI and the value equal to the value in the object.
+                
+        """)
+@ReadsAttributes({@ReadsAttribute(attribute = "", description = "")})
+@WritesAttributes({@WritesAttribute(attribute = "", description = "")})
 public class IoticsJSONToTwin extends AbstractProcessor {
 
     public static PropertyDescriptor ONT_PREFIX = new org.apache.nifi.components.PropertyDescriptor
@@ -122,7 +118,6 @@ public class IoticsJSONToTwin extends AbstractProcessor {
     }
 
 
-
     private Optional<ListenableFuture<UpsertTwinResponse>> processJsonObject(
             final ProcessContext context,
             final JsonObject keysMap,
@@ -131,11 +126,11 @@ public class IoticsJSONToTwin extends AbstractProcessor {
         JsonObject jsonObject = new JsonObject();
         dataObject.keySet().forEach(s -> {
             JsonElement key = null;
-            if(keysMap != null) {
+            if (keysMap != null) {
                 key = keysMap.get(s);
             }
             JsonElement v = dataObject.get(s);
-            if (key!= null) {
+            if (key != null) {
                 jsonObject.add(key.getAsString(), v);
             } else {
                 jsonObject.add(s, v);
@@ -147,7 +142,7 @@ public class IoticsJSONToTwin extends AbstractProcessor {
         String keyName = jsonObject.get(jsonIdProp).getAsString();
         String ontPrefix = context.getProperty(ONT_PREFIX).getValue();
         getLogger().info("Processing JSON object with keyName " + keyName);
-        if(keyName == null) {
+        if (keyName == null) {
             getLogger().warn("Failed to read json object ID property '" + jsonIdProp + "', skipping");
             return Optional.empty();
         } else {
@@ -162,10 +157,10 @@ public class IoticsJSONToTwin extends AbstractProcessor {
         IoticsHostService ioticsHostService =
                 context.getProperty(IOTICS_HOST_SERVICE).asControllerService(IoticsHostService.class);
 
-        this.ioticsApi  = ioticsHostService.getIoticsApi();
-        this.sim  = ioticsHostService.getSimpleIdentityManager();
+        this.ioticsApi = ioticsHostService.getIoticsApi();
+        this.sim = ioticsHostService.getSimpleIdentityManager();
         this.executor = ioticsHostService.getExecutor();
-        
+
         final AtomicReference<JsonObject> value = new AtomicReference<>();
         FlowFile flowFile = session.get();
         if (flowFile == null) {
@@ -176,26 +171,26 @@ public class IoticsJSONToTwin extends AbstractProcessor {
         session.read(flowFile, in -> {
             JsonArray successes = new JsonArray();
             JsonArray failures = new JsonArray();
-            try{
+            try {
                 JsonElement jsonElement = JsonParser.parseReader(new InputStreamReader(in));
                 JsonObject map = jsonElement.getAsJsonObject().getAsJsonObject("map");
                 JsonArray dataArray = jsonElement.getAsJsonObject().getAsJsonArray("data");
 
                 JsonArray data = new JsonArray();
-                if(dataArray != null) {
+                if (dataArray != null) {
                     data = dataArray.getAsJsonArray();
                 }
 
                 CountDownLatch latch = new CountDownLatch(data.size());
                 data.asList()
-                    .forEach(el -> processJsonObject(context, map, el.getAsJsonObject())
+                        .forEach(el -> processJsonObject(context, map, el.getAsJsonObject())
                                 .ifPresentOrElse(f -> processFuture(f, latch, successes, failures), latch::countDown));
                 latch.await();
                 JsonObject o = new JsonObject();
                 o.add("successes", successes);
                 o.add("failures", failures);
                 value.set(o);
-            } catch(Exception ex){
+            } catch (Exception ex) {
                 getLogger().error("Failed to read json string.", ex);
                 throw new ProcessException(ex.getMessage(), ex);
             }

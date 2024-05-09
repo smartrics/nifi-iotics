@@ -17,7 +17,10 @@
 package smartrics.iotics.nifi.processors;
 
 import com.google.common.collect.Lists;
-import com.google.gson.*;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.google.protobuf.StringValue;
 import com.google.protobuf.Timestamp;
 import com.iotics.api.*;
@@ -28,6 +31,7 @@ import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.*;
 import org.apache.nifi.processor.exception.ProcessException;
+import smartrics.iotics.host.Builders;
 import smartrics.iotics.host.IoticsApi;
 import smartrics.iotics.identity.SimpleIdentityManager;
 import smartrics.iotics.nifi.processors.objects.MyTwin;
@@ -35,7 +39,6 @@ import smartrics.iotics.nifi.processors.objects.MyTwinList;
 import smartrics.iotics.nifi.processors.tools.JsonToProperty;
 import smartrics.iotics.nifi.processors.tools.LocationValidator;
 import smartrics.iotics.nifi.services.IoticsHostService;
-import smartrics.iotics.host.Builders;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -183,7 +186,7 @@ public class IoticsFinder extends AbstractProcessor {
                             getLogger().warn("unable to parse to json {}", twin);
                             session.transfer(flowFile, FAILURE);
                         }
-                    } catch(Exception e) {
+                    } catch (Exception e) {
                         getLogger().warn("unable to process twin {}", twin);
                     }
                 });

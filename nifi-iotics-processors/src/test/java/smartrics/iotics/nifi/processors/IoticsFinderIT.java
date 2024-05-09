@@ -1,6 +1,8 @@
 package smartrics.iotics.nifi.processors;
 
-import org.apache.nifi.util.*;
+import org.apache.nifi.util.MockFlowFile;
+import org.apache.nifi.util.TestRunner;
+import org.apache.nifi.util.TestRunners;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -31,7 +33,7 @@ public class IoticsFinderIT {
         testRunner.assertQueueEmpty();
         List<MockFlowFile> results = testRunner.getFlowFilesForRelationship(Constants.SUCCESS);
 
-        if(!results.isEmpty()) {
+        if (!results.isEmpty()) {
             results.forEach(mockFlowFile -> {
                 String outputFlowfileContent = new String(testRunner.getContentAsByteArray(mockFlowFile));
                 System.out.println(outputFlowfileContent);

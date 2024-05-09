@@ -44,8 +44,8 @@ import static smartrics.iotics.nifi.processors.Constants.*;
 
 @Tags({"IOTICS", "SPARQL", "QUERY"})
 @CapabilityDescription("""
-Runs a SPARQL query and returns the output to the fileflow.
-""")
+        Runs a SPARQL query and returns the output to the fileflow.
+        """)
 @ReadsAttribute(attribute = "sql.query", description = "The SQL select query to execute.")
 public class IoticsSPARQLQuery extends AbstractProcessor {
     public static PropertyDescriptor SPARQL_QUERY = new PropertyDescriptor
@@ -90,8 +90,8 @@ public class IoticsSPARQLQuery extends AbstractProcessor {
         IoticsHostService ioticsHostService =
                 context.getProperty(IOTICS_HOST_SERVICE).asControllerService(IoticsHostService.class);
 
-        this.ioticsApi  = ioticsHostService.getIoticsApi();
-        this.sim  = ioticsHostService.getSimpleIdentityManager();
+        this.ioticsApi = ioticsHostService.getIoticsApi();
+        this.sim = ioticsHostService.getSimpleIdentityManager();
 
         final FlowFile flowFile = session.create();
         String query = context.getProperty(SPARQL_QUERY).getValue();

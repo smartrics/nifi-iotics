@@ -4,7 +4,8 @@ import com.iotics.api.SearchResponse;
 
 import java.util.List;
 
-public record MyTwin(String hostDid, String id, String keyName, List<MyProperty> properties, List<Port> feeds, List<Port> inputs) {
+public record MyTwin(String hostDid, String id, String keyName, List<MyProperty> properties, List<Port> feeds,
+                     List<Port> inputs) {
     public MyTwin(SearchResponse.TwinDetails twinDetails) {
         this(twinDetails.getTwinId().getHostId(),
                 twinDetails.getTwinId().getId(),

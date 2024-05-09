@@ -33,7 +33,7 @@ public class IoticsPublisherIT {
         testRunner.assertQueueEmpty();
         List<MockFlowFile> results = testRunner.getFlowFilesForRelationship(Constants.SUCCESS);
 
-        if(!results.isEmpty()) {
+        if (!results.isEmpty()) {
             results.forEach(mockFlowFile -> {
                 String outputFlowfileContent = new String(testRunner.getContentAsByteArray(mockFlowFile));
                 System.out.println(outputFlowfileContent);

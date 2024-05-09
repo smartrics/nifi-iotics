@@ -16,7 +16,8 @@ public class CarsPublisher {
         String content = Files.readString(path);
 
         // Define the type of the data we're reading (List<Car>)
-        Type carListType = new TypeToken<List<CarModel>>(){}.getType();
+        Type carListType = new TypeToken<List<CarModel>>() {
+        }.getType();
 
         // Create a Gson instance
         Gson gson = new Gson();

@@ -2,8 +2,6 @@ package smartrics.iotics.nifi.services;
 
 import org.apache.nifi.context.PropertyContext;
 
-import java.time.Duration;
-
 import static smartrics.iotics.nifi.services.BasicIoticsHostService.*;
 
 public record Configuration(String seed, String userKey, String agentKey,

@@ -33,7 +33,6 @@ import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.*;
 import org.apache.nifi.processor.exception.ProcessException;
-import org.apache.nifi.processor.util.StandardValidators;
 import org.jetbrains.annotations.NotNull;
 import smartrics.iotics.host.Builders;
 import smartrics.iotics.host.IoticsApi;
@@ -50,7 +49,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 
-import static org.apache.nifi.processor.util.StandardValidators.*;
+import static org.apache.nifi.processor.util.StandardValidators.NON_EMPTY_VALIDATOR;
 import static smartrics.iotics.nifi.processors.Constants.*;
 
 @Tags({"IOTICS", "DIGITAL TWIN", "FIND", "BIND", "FOLLOWER"})
@@ -171,7 +170,7 @@ public class IoticsFollower extends AbstractProcessor {
 
     private void follow(FollowEvent event) {
         FlowFile flowFile = event.flowFile();
-        if(flowFile == null) {
+        if (flowFile == null) {
             getLogger().warn("no flowfile found - not following");
             return;
         }
@@ -232,7 +231,7 @@ public class IoticsFollower extends AbstractProcessor {
                         && ((StatusRuntimeException) throwable).getStatus().getCode() == Status.Code.UNAUTHENTICATED
                 ) {
                     // TODO seems the ff isn't found in unittest - check live deployment
-                    if(!found.isEmpty()) {
+                    if (!found.isEmpty()) {
                         getLogger().info("Follower twin following again did=" + followerDid);
                         eventBus.post(new FollowEvent(followerDid, found.getFirst(), session));
                     }

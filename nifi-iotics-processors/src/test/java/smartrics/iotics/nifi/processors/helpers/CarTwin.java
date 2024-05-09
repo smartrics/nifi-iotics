@@ -10,7 +10,6 @@ import smartrics.iotics.identity.Identity;
 import smartrics.iotics.identity.SimpleIdentityManager;
 
 import java.util.List;
-import java.util.concurrent.Executor;
 
 public class CarTwin extends AbstractTwin implements MappableMaker, Mapper {
     private final CarModel car;

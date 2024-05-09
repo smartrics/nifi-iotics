@@ -19,7 +19,7 @@ public record Port(String id, List<MyProperty> properties, Map<String, Object> p
     }
 
     public String payloadAsJson() {
-        if(payload == null) {
+        if (payload == null) {
             return null;
         }
         Gson gson = new Gson();

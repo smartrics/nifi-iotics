@@ -44,14 +44,14 @@ public class IoticsFollowerIT {
 
         try (ExecutorService executor = Executors.newFixedThreadPool(1)) {
             executor.submit(() -> {
-                while(true) {
+                while (true) {
                     List<MockFlowFile> results = testRunner.getFlowFilesForRelationship(Constants.SUCCESS);
 
                     MockFlowFile outputFlowfile = results.getFirst();
                     String outputFlowfileContent = new String(testRunner.getContentAsByteArray(outputFlowfile));
                     System.out.println(latch.getCount() + ") " + outputFlowfileContent);
                     latch.countDown();
-                    if(latch.getCount() == 0) {
+                    if (latch.getCount() == 0) {
                         return;
                     }
                     try {

@@ -1,18 +1,19 @@
-[{
-  "hostDid": "did:iotics:iotF4bijjsnZJNaEYZJFXKqiDWBjPEFPWddr",
-  "id": "did:iotics:iotBN2VKV2LuAqt7LxVqfxp8NZssNx18hp8o",
-  "keyName": "Foo1",
-  "feeds": [
-    {
-      "id": "status",
-      "payload" : {
-        "isOperational": false,
-        "isUserSelectable": true
+[
+  {
+    "hostDid": "did:iotics:iotF4bijjsnZJNaEYZJFXKqiDWBjPEFPWddr",
+    "id": "did:iotics:iotBN2VKV2LuAqt7LxVqfxp8NZssNx18hp8o",
+    "keyName": "Foo1",
+    "feeds": [
+      {
+        "id": "status",
+        "payload": {
+          "isOperational": false,
+          "isUserSelectable": true
+        }
       }
-    }
-  ],
-  "inputs": []
-},
+    ],
+    "inputs": []
+  },
   {
     "hostDid": "did:iotics:iotF4bijjsnZJNaEYZJFXKqiDWBjPEFPWddr",
     "id": "did:iotics:iotBN2VKV2LuAqt7LxVqfxp8NZssNx18hp8o",
@@ -20,7 +21,7 @@
     "feeds": [
       {
         "id": "status",
-        "payload" : {
+        "payload": {
           "isOperational": true,
           "isUserSelectable": false
         }

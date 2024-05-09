@@ -1,8 +1,6 @@
 package smartrics.iotics.nifi.services;
 
 import org.jetbrains.annotations.NotNull;
-import smartrics.iotics.host.HostEndpoints;
-import smartrics.iotics.host.HttpServiceRegistry;
 import smartrics.iotics.host.IoticsApi;
 import smartrics.iotics.host.IoticsApiImpl;
 import smartrics.iotics.host.grpc.HostConnection;
