@@ -29,7 +29,7 @@
     <properties>
         <nifi.version>2.0.0-M2</nifi.version>
         <iotics.nifi.version>1.0-SNAPSHOT</iotics.nifi.version>
-        <iotics4j.version>1.0</iotics4j.version>
+        <iotics4j.version>1.2</iotics4j.version>
     </properties>
 
     <dependencies>
