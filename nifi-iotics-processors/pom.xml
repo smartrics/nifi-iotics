@@ -54,11 +54,19 @@
             <groupId>com.bazaarvoice.jolt</groupId>
             <artifactId>jolt-core</artifactId>
             <version>0.1.8</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.bazaarvoice.jolt</groupId>
             <artifactId>json-utils</artifactId>
             <version>0.1.8</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/com.github.jsonld-java/jsonld-java -->
+        <dependency>
+            <groupId>com.github.jsonld-java</groupId>
+            <artifactId>jsonld-java</artifactId>
+            <version>0.13.6</version>
         </dependency>
         <dependency>
             <groupId>smartrics.iotics.nifi</groupId>

@@ -31,6 +31,10 @@ public interface Constants {
             .name("success")
             .description("Success relationship")
             .build();
+    Relationship ORIGINAL = new Relationship.Builder()
+            .name("original")
+            .description("Original flow-file content")
+            .build();
     Relationship FAILURE = new Relationship.Builder()
             .name("failure")
             .description("Failure relationship")

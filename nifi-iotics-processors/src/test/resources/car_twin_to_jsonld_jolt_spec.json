@@ -1,0 +1,33 @@
+[
+  {
+    "operation": "shift",
+    "spec":  {
+      "*": "&"
+    }
+  },
+  {
+    "operation": "modify-overwrite-beta",
+    "spec": {
+      "Units": "=toInteger(@(1,Units))",
+      "isOperational": "=toBoolean(@(1,isOperational))",
+      "label": "=concat(@(1,Make), ' ', @(1,Model), ' ', @(1,ID))"
+    }
+  },
+  {
+    "operation": "default",
+    "spec": {
+      "@context": {
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+        "comment": "rdfs:comment",
+        "label": "rdfs:label",
+        "ID": "http://schema.org/identifier",
+        "Make": "http://schema.org/manufacturer",
+        "Model": "http://schema.org/model",
+        "Colour": "http://schema.org/color",
+        "isOperational": "https://data.iotics.com/nifi/isOperational",
+        "Units": "https://data.iotics.com/nifi/units"
+      },
+      "@type": "http://schema.org/Car"
+    }
+  }
+]

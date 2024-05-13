@@ -20,12 +20,24 @@ class DateTypeDetectorTest {
             "2024-05-07T15:24:00Z, dateTime"
     })
     void testParsing(String value, String expected) {
-        assertThat(DateTypeDetector.detectDateTimeType(value).orElseThrow().toString(), is(equalTo(expected)));
+        assertThat(TypeDetector.detectDateTimeType(value).orElseThrow().toString(), is(equalTo(expected)));
     }
 
 
     @Test
     void wontParseInvalid() {
-        assertTrue(DateTypeDetector.detectDateTimeType("foo").isEmpty());
+        assertTrue(TypeDetector.detectDateTimeType("foo").isEmpty());
+    }
+
+    @Test
+    void detectsAbsoluteURIs() {
+        String url = "http://smartrics.it";
+        assertThat(TypeDetector.detectAbsoluteUri(url).orElseThrow().toString(), is(equalTo("anyURI")));
+    }
+
+    @Test
+    void wontDetectURIIfNotAbsolute() {
+        String url = "smartrics.it";
+        assertTrue(TypeDetector.detectAbsoluteUri(url).isEmpty());
     }
 }

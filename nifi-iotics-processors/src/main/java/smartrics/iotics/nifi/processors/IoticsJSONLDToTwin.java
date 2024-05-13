@@ -16,13 +16,15 @@
  */
 package smartrics.iotics.nifi.processors;
 
+import com.github.jsonldjava.core.JsonLdOptions;
+import com.github.jsonldjava.core.JsonLdProcessor;
+import com.github.jsonldjava.core.RDFDataset;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.iotics.api.TwinID;
 import com.iotics.api.UpsertTwinResponse;
 import org.apache.nifi.annotation.behavior.ReadsAttribute;
 import org.apache.nifi.annotation.behavior.ReadsAttributes;
@@ -39,10 +41,11 @@ import org.jetbrains.annotations.NotNull;
 import smartrics.iotics.host.IoticsApi;
 import smartrics.iotics.identity.Identity;
 import smartrics.iotics.identity.SimpleIdentityManager;
-import smartrics.iotics.nifi.processors.objects.ConcreteTwin;
+import smartrics.iotics.nifi.processors.tools.AllowListEntryValidator;
+import smartrics.iotics.nifi.processors.objects.JsonLdTwin;
 import smartrics.iotics.nifi.services.IoticsHostService;
 
-import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -52,31 +55,14 @@ import static smartrics.iotics.nifi.processors.Constants.*;
 
 @Tags({"IOTICS", "TWIN CREATOR"})
 @CapabilityDescription("""
-        Simple test to create twins from a template in JSON.
-        The JSON must have the following structure:
+Transforms a JSON-LD object into a twin. It's meant to be used using flow files outputted by the JOLT processor and the JSON-LD should be compatible with the shape of an IOTICS twin.
+In practice, it needs to be a key-value map with no complex objects as values.
 
-        { "data" : [ { <key-value-pairs> }, {}, ... ], "map": { <map of keys to ontology> } }
-         
-        "data" is an array of json objects, each <key-value-pair> object is a set of string keys mapping to a
-        value of numeric, boolean or string type.
-
-        the "map" contains the mapping between the key in the <key-value-pairs> and a URI.
-
-        Each object is a twin with properties having the key equal to the URI and the value equal to the value in the object.
-                
+The key referenced by "ID Property" must be present, in order to determine the Identity of this twin.
         """)
 @ReadsAttributes({@ReadsAttribute(attribute = "", description = "")})
 @WritesAttributes({@WritesAttribute(attribute = "", description = "")})
-public class IoticsJSONToTwin extends AbstractProcessor {
-
-    public static PropertyDescriptor ONT_PREFIX = new org.apache.nifi.components.PropertyDescriptor
-            .Builder().name("ontPrefix")
-            .displayName("Ontology Prefix")
-            .description("The prefix to add to the keys if they're not already URIs")
-            .required(true)
-            .defaultValue("https://data.iotics.com/nifi")
-            .addValidator(StandardValidators.NON_BLANK_VALIDATOR)
-            .build();
+public class IoticsJSONLDToTwin extends AbstractProcessor {
 
     public static PropertyDescriptor ID_PROP = new PropertyDescriptor
             .Builder().name("idProperty")
@@ -84,6 +70,15 @@ public class IoticsJSONToTwin extends AbstractProcessor {
             .description("property in the incoming flow file that defines the key name for this twin")
             .required(true)
             .addValidator(StandardValidators.NON_BLANK_VALIDATOR)
+            .build();
+
+    public static PropertyDescriptor DEFAULT_ALLOW_LIST_PROP = new PropertyDescriptor
+            .Builder().name("allowListProperty")
+            .displayName("Allow Remote Access")
+            .description("Specify whether this twin is visible remotely or not. " +
+                    "Allowed values 'http://data.iotics.com/public#all', 'http://data.iotics.com/public#none', or a list of host DIDs separate by comma")
+            .required(true)
+            .addValidator(new AllowListEntryValidator())
             .build();
 
     private List<PropertyDescriptor> descriptors;
@@ -97,11 +92,12 @@ public class IoticsJSONToTwin extends AbstractProcessor {
     protected void init(final ProcessorInitializationContext context) {
         descriptors = new ArrayList<>();
         descriptors.add(ID_PROP);
-        descriptors.add(ONT_PREFIX);
+        descriptors.add(DEFAULT_ALLOW_LIST_PROP);
         descriptors.add(IOTICS_HOST_SERVICE);
         descriptors = Collections.unmodifiableList(descriptors);
 
         relationships = new HashSet<>();
+        relationships.add(ORIGINAL);
         relationships.add(SUCCESS);
         relationships.add(FAILURE);
         relationships = Collections.unmodifiableSet(relationships);
@@ -119,37 +115,21 @@ public class IoticsJSONToTwin extends AbstractProcessor {
 
 
     private Optional<ListenableFuture<UpsertTwinResponse>> processJsonObject(
-            final ProcessContext context,
-            final JsonObject keysMap,
-            final JsonObject dataObject) {
+            final ProcessContext context,List<RDFDataset.Quad> quads) {
         // map keys
-        JsonObject jsonObject = new JsonObject();
-        dataObject.keySet().forEach(s -> {
-            JsonElement key = null;
-            if (keysMap != null) {
-                key = keysMap.get(s);
-            }
-            JsonElement v = dataObject.get(s);
-            if (key != null) {
-                jsonObject.add(key.getAsString(), v);
-            } else {
-                jsonObject.add(s, v);
-            }
-        });
-
-        // process
         String jsonIdProp = context.getProperty(ID_PROP).getValue();
-        String keyName = jsonObject.get(jsonIdProp).getAsString();
-        String ontPrefix = context.getProperty(ONT_PREFIX).getValue();
-        getLogger().info("Processing JSON object with keyName " + keyName);
-        if (keyName == null) {
-            getLogger().warn("Failed to read json object ID property '" + jsonIdProp + "', skipping");
+        String allowListProp = context.getProperty(DEFAULT_ALLOW_LIST_PROP).getValue();
+
+        Optional<RDFDataset.Quad> res = quads.stream().filter(quad ->
+                quad.getPredicate().getValue().equals(jsonIdProp)).findFirst();
+
+        if(res.isEmpty()) {
             return Optional.empty();
-        } else {
-            Identity myIdentity = sim.newTwinIdentity(keyName, "#masterKey");
-            ConcreteTwin twin = new ConcreteTwin(getLogger(), ioticsApi, sim, jsonObject, ontPrefix, myIdentity);
-            return Optional.of(twin.upsert());
         }
+        String twinIdentifier = res.get().getObject().getValue();
+        Identity myIdentity = sim.newTwinIdentityWithControlDelegation(twinIdentifier, "#masterKey");
+        JsonLdTwin twin = new JsonLdTwin(getLogger(), ioticsApi, sim, quads, myIdentity,allowListProp);
+        return Optional.of(twin.upsert());
     }
 
     @Override
@@ -161,44 +141,66 @@ public class IoticsJSONToTwin extends AbstractProcessor {
         this.sim = ioticsHostService.getSimpleIdentityManager();
         this.executor = ioticsHostService.getExecutor();
 
-        final AtomicReference<JsonObject> value = new AtomicReference<>();
+        final AtomicReference<Throwable> error = new AtomicReference<>();
+        final AtomicReference<TwinID> twinID = new AtomicReference<>();
         FlowFile flowFile = session.get();
         if (flowFile == null) {
             // return - nothing to try again
             return;
         }
 
+        final CountDownLatch waitForCompletion = new CountDownLatch(1);
         session.read(flowFile, in -> {
-            JsonArray successes = new JsonArray();
-            JsonArray failures = new JsonArray();
             try {
-                JsonElement jsonElement = JsonParser.parseReader(new InputStreamReader(in));
-                JsonObject map = jsonElement.getAsJsonObject().getAsJsonObject("map");
-                JsonArray dataArray = jsonElement.getAsJsonObject().getAsJsonArray("data");
+                JsonLdOptions options = new JsonLdOptions();
+                // Convert JSON-LD to RDF triples
+                RDFDataset dataset = (RDFDataset) JsonLdProcessor.toRDF(in, options);
 
-                JsonArray data = new JsonArray();
-                if (dataArray != null) {
-                    data = dataArray.getAsJsonArray();
+                Iterator<String> gIt = dataset.keySet().iterator();
+                if(!gIt.hasNext()) {
+                    return;
                 }
+                String defaultGraph = gIt.next();
+                List<RDFDataset.Quad> quads = dataset.getQuads(defaultGraph);
 
-                CountDownLatch latch = new CountDownLatch(data.size());
-                data.asList()
-                        .forEach(el -> processJsonObject(context, map, el.getAsJsonObject())
-                                .ifPresentOrElse(f -> processFuture(f, latch, successes, failures), latch::countDown));
-                latch.await();
-                JsonObject o = new JsonObject();
-                o.add("successes", successes);
-                o.add("failures", failures);
-                value.set(o);
+                Optional<ListenableFuture<UpsertTwinResponse>> result = processJsonObject(context, quads);
+                if(result.isEmpty()) {
+                    waitForCompletion.countDown();
+                } else {
+                    ListenableFuture<UpsertTwinResponse> fut = result.get();
+                    fut.addListener(() -> {
+                        try {
+                            twinID.set(fut.resultNow().getPayload().getTwinId());
+                        } catch (IllegalStateException e) {
+                            error.set(fut.exceptionNow());
+                        }
+                        waitForCompletion.countDown();
+                    }, executor);
+                }
             } catch (Exception ex) {
                 getLogger().error("Failed to read json string.", ex);
                 throw new ProcessException(ex.getMessage(), ex);
             }
         });
+        try {
+            waitForCompletion.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            getLogger().error("Timed out while waiting for result.", e);
+            throw new ProcessException("Timed out while waiting for result.", e);
+        }
 
-        // To write the results back out of flow file
-        flowFile = session.write(flowFile, out -> out.write(value.get().toString().getBytes()));
-        session.transfer(flowFile, SUCCESS);
+        if(error.get() != null) {
+            session.write(flowFile, out -> out.write(error.get().getMessage().getBytes(StandardCharsets.UTF_8)));
+
+        } else {
+            if(twinID.get() != null) {
+                FlowFile success = session.create(flowFile);
+                session.write(success, out -> out.write(new Gson().toJson(Map.of("hostId", twinID.get().getHostId(), "id",twinID.get().getId())).getBytes(StandardCharsets.UTF_8)));
+                session.transfer(success, SUCCESS);
+            }
+            session.transfer(flowFile, ORIGINAL);
+        }
     }
 
     private void processFuture(ListenableFuture<UpsertTwinResponse> f, CountDownLatch latch, JsonArray successes, JsonArray failures) {

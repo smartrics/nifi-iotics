@@ -1,0 +1,9 @@
+{
+  "ID": "1",
+  "Make": "Toyota",
+  "Model": "Camry",
+  "Colour": "Red",
+  "isOperational": "true",
+  "Comment": "Well maintained",
+  "Units": "5"
+}

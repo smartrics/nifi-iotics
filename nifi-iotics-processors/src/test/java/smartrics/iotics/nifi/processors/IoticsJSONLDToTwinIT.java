@@ -33,21 +33,20 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static smartrics.iotics.nifi.processors.IoticsControllerServiceFactory.injectIoticsHostService;
 
-public class IoticsJSONToTwinIT {
+public class IoticsJSONLDToTwinIT {
 
     private TestRunner testRunner;
 
     @BeforeEach
     public void init() throws Exception {
-        testRunner = TestRunners.newTestRunner(IoticsJSONToTwin.class);
+        testRunner = TestRunners.newTestRunner(IoticsJSONLDToTwin.class);
         injectIoticsHostService(testRunner);
-        testRunner.setProperty(IoticsJSONToTwin.ONT_PREFIX, "https://data.iotics.com/nifi/");
-        testRunner.setProperty(IoticsJSONToTwin.ID_PROP, "https://data.iotics.com/nifi/id");
+        testRunner.setProperty(IoticsJSONLDToTwin.ID_PROP, "https://data.iotics.com/nifi/id");
     }
 
     @Test
     public void testProcessor() throws IOException {
-        String content = Files.readString(Path.of("src\\test\\resources\\twins.json"));
+        String content = Files.readString(Path.of("src\\test\\resources\\car.json"));
         testRunner.enqueue(content);
         testRunner.run(1);
         //assert the input Q is empty and the flowfile is processed
