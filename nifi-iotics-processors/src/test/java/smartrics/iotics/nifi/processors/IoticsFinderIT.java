@@ -19,8 +19,8 @@ public class IoticsFinderIT {
         injectIoticsHostService(testRunner);
 
         testRunner.setProperty(IoticsFinder.EXPIRY_TIMEOUT, "10");
-        testRunner.setProperty(IoticsFinder.LOCATION, "{ 'r': 5, 'lat': 52.568213, 'lon': -0.244837 }");
-//        testRunner.setProperty(IoticsFinder.TEXT, "");
+//        testRunner.setProperty(IoticsFinder.LOCATION, "{ 'r': 5, 'lat': 52.568213, 'lon': -0.244837 }");
+        testRunner.setProperty(IoticsFinder.TEXT, "Toyota");
 //        testRunner.setProperty(IoticsFinder.PROPERTIES);
         testRunner.setProperty(Constants.QUERY_SCOPE, "LOCAL");
     }

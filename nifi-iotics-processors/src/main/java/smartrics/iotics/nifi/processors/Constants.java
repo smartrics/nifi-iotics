@@ -4,6 +4,7 @@ import com.iotics.api.Scope;
 import org.apache.nifi.components.AllowableValue;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.processor.Relationship;
+import org.apache.nifi.processor.util.StandardValidators;
 import smartrics.iotics.nifi.services.IoticsHostService;
 
 import java.util.Arrays;
@@ -26,6 +27,14 @@ public interface Constants {
             .description("Service configuring and providing access an IOTICS host")
             .identifiesControllerService(IoticsHostService.class)
             .required(true)
+            .build();
+    PropertyDescriptor ID_PROP = new PropertyDescriptor
+            .Builder().name("idProp")
+            .displayName("ID property")
+            .description("This property should be present in the input flow file to identify the value used to determine the twin Identity. This value is then passed to the Identity library as KeyName.")
+            .required(true)
+            .defaultValue("http://schema.org/identifier")
+            .addValidator(StandardValidators.URI_VALIDATOR)
             .build();
     Relationship SUCCESS = new Relationship.Builder()
             .name("success")

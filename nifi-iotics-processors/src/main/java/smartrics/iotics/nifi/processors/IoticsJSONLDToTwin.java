@@ -69,15 +69,6 @@ In order to determine the twin identity, the JSON-LD is expected to have an attr
 @WritesAttributes({@WritesAttribute(attribute = "", description = "")})
 public class IoticsJSONLDToTwin extends AbstractProcessor {
 
-    public static PropertyDescriptor ID_PROP = new PropertyDescriptor
-            .Builder().name("idProp")
-            .displayName("ID property")
-            .description("This property should be present in the input flow file to identify the value used to determine the twin Identity. This value is then passed to the Identity library as KeyName.")
-            .required(true)
-            .defaultValue("http://schema.org/identifier")
-            .addValidator(StandardValidators.URI_VALIDATOR)
-            .build();
-
     public static PropertyDescriptor DEFAULT_ALLOW_LIST_PROP = new PropertyDescriptor
             .Builder().name("allowListProperty")
             .displayName("Allow Remote Access")

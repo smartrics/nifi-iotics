@@ -89,6 +89,14 @@ public class IoticsFollower extends AbstractProcessor {
             .required(true)
             .addValidator(NON_EMPTY_VALIDATOR)
             .build();
+    public static Relationship RECEIVED_DATA = new Relationship.Builder()
+            .name("receivedData")
+            .description("Data received from feed share")
+            .build();
+    public static Relationship RECEIVED_DATA_COMPLETE = new Relationship.Builder()
+            .name("receivedDataComplete")
+            .description("Data received from feed share has completed. No more data will be received")
+            .build();
 
     private final EventBus eventBus = new EventBus();
     private List<PropertyDescriptor> descriptors;
@@ -110,6 +118,8 @@ public class IoticsFollower extends AbstractProcessor {
 
         relationships = new HashSet<>();
         relationships.add(SUCCESS);
+        relationships.add(RECEIVED_DATA);
+        relationships.add(RECEIVED_DATA_COMPLETE);
         relationships.add(FAILURE);
         relationships = Collections.unmodifiableSet(relationships);
 
@@ -196,7 +206,7 @@ public class IoticsFollower extends AbstractProcessor {
                         session.putAttribute(ff, "occurredAt", feedData.getOccurredAt().toString());
                         ByteString bytes = feedData.getData();
                         session.write(ff, out -> out.write(bytes.toByteArray()));
-                        session.transfer(ff, SUCCESS);
+                        session.transfer(ff, RECEIVED_DATA);
                     } catch (Exception e) {
                         session.transfer(ff, FAILURE);
                     }
@@ -246,7 +256,7 @@ public class IoticsFollower extends AbstractProcessor {
                 MyFlowFileFilter filter = new MyFlowFileFilter(hostId, twinId, feedDetails.id());
                 // TODO seems the ff isn't found in unittest - check live deployment
                 List<FlowFile> found = session.get(filter);
-                found.forEach(flowFile -> session.transfer(flowFile, SUCCESS));
+                found.forEach(flowFile -> session.transfer(flowFile, RECEIVED_DATA_COMPLETE));
             }
         });
     }

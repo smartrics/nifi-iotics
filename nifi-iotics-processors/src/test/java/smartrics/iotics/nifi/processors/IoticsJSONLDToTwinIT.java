@@ -32,8 +32,8 @@ import java.util.Map;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static smartrics.iotics.nifi.processors.Constants.ID_PROP;
 import static smartrics.iotics.nifi.processors.IoticsControllerServiceFactory.injectIoticsHostService;
-import static smartrics.iotics.nifi.processors.IoticsJSONLDToTwin.ID_PROP;
 
 public class IoticsJSONLDToTwinIT {
 
@@ -125,7 +125,7 @@ public class IoticsJSONLDToTwinIT {
         Gson gson = new Gson();
         Map<String, Object> json = (Map<String, Object>)gson.fromJson(outputFlowfileContent, Map.class);
 
-        assertThat(json.get("ID").toString(), is(equalTo("1")));
+        assertThat(json.get("IDye").toString(), is(equalTo("1")));
     }
 
 }

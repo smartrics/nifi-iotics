@@ -20,13 +20,12 @@ public class IoticsPublisherIT {
     public void init() throws Exception {
         testRunner = TestRunners.newTestRunner(IoticsPublisher.class);
         injectIoticsHostService(testRunner);
-        testRunner.setProperty(IoticsPublisher.DEBUG_FLAG, "true");
     }
 
 
     @Test
     public void testProcessor() throws IOException, InterruptedException {
-        String content = Files.readString(Path.of("src\\test\\resources\\IoticsPublisher.json"));
+        String content = Files.readString(Path.of("src\\test\\resources\\twin_with_feed.json"));
         testRunner.enqueue(content);
         testRunner.run(1);
         //assert the input Q is empty and the flowfile is processed

@@ -16,7 +16,7 @@ import java.util.Properties;
 
 public class IoticsControllerServiceFactory {
 
-    public static void injectIoticsHostService(TestRunner testRunner) throws InitializationException, IOException {
+    public static BasicIoticsHostService injectIoticsHostService(TestRunner testRunner) throws InitializationException, IOException {
         Properties prop = new Properties();
         // The path to your properties file
         String propFileName = ".env";
@@ -36,6 +36,7 @@ public class IoticsControllerServiceFactory {
             // Register the mock service with the test runner
             testRunner.addControllerService("ioticsHostService", ioticsHostService, conf);
             testRunner.enableControllerService(ioticsHostService);
+            return ioticsHostService;
         }
     }
 

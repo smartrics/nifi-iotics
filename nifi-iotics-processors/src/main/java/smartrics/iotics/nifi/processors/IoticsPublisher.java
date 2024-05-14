@@ -38,11 +38,11 @@ import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.*;
 import org.apache.nifi.processor.exception.ProcessException;
-import org.apache.nifi.processor.util.StandardValidators;
 import org.jetbrains.annotations.NotNull;
 import smartrics.iotics.host.Builders;
 import smartrics.iotics.host.IoticsApi;
 import smartrics.iotics.identity.SimpleIdentityManager;
+import smartrics.iotics.nifi.processors.objects.MyProperty;
 import smartrics.iotics.nifi.processors.objects.MyTwin;
 import smartrics.iotics.nifi.processors.objects.Port;
 import smartrics.iotics.nifi.services.IoticsHostService;
@@ -64,14 +64,6 @@ import static smartrics.iotics.nifi.processors.Constants.*;
 public class IoticsPublisher extends AbstractProcessor {
 
     private static final Gson gson = new Gson();
-    public static PropertyDescriptor DEBUG_FLAG = new PropertyDescriptor
-            .Builder().name("debugFlag")
-            .displayName("Debug flag")
-            .description("if set to true, outputs to a new flowfile for debug purposes")
-            .defaultValue("false")
-            .required(false)
-            .addValidator(StandardValidators.BOOLEAN_VALIDATOR)
-            .build();
     private final EventBus eventBus = new EventBus();
     private final Map<String, StreamObserver<ShareFeedDataRequest>> cache = new ConcurrentHashMap<>();
     private List<PropertyDescriptor> descriptors;
@@ -105,7 +97,7 @@ public class IoticsPublisher extends AbstractProcessor {
     @Override
     protected void init(final ProcessorInitializationContext context) {
         descriptors = new ArrayList<>();
-        descriptors.add(DEBUG_FLAG);
+        descriptors.add(ID_PROP);
         descriptors.add(IOTICS_HOST_SERVICE);
         descriptors = Collections.unmodifiableList(descriptors);
 
@@ -135,8 +127,6 @@ public class IoticsPublisher extends AbstractProcessor {
         this.ioticsApi = ioticsHostService.getIoticsApi();
         this.sim = ioticsHostService.getSimpleIdentityManager();
         this.executor = ioticsHostService.getExecutor();
-
-        Boolean debugOn = context.getProperty(DEBUG_FLAG).asBoolean();
 
         FlowFile flowFile = session.get();
         if (flowFile == null) {
@@ -168,7 +158,9 @@ public class IoticsPublisher extends AbstractProcessor {
                 // onnext or onerror to make sure we unblock when all sharing occurred
 
                 receivedTwins.forEach(myTwin -> {
-                    if (myTwin.keyName() != null) {
+                    Optional<MyProperty> pr = myTwin.properties().stream()
+                            .filter(p -> p.key().equals(context.getProperty(ID_PROP).getValue())).findFirst();
+                    if (pr.isEmpty()) {
                         getLogger().warn("invalid twin. missing keyName: " + myTwin.id());
                     }
                     CountDownLatch latchFeeds = new CountDownLatch(myTwin.feeds().size());
@@ -190,11 +182,11 @@ public class IoticsPublisher extends AbstractProcessor {
 
     private void shareFeed(StreamEvent event) {
         try {
-            ShareFeedDataRequest request = newShareFeedDataRequest(event);
-            if (request == null) {
+            Optional<ShareFeedDataRequest> request = newShareFeedDataRequest(event);
+            if (request.isEmpty()) {
                 return;
             }
-            ListenableFuture<ShareFeedDataResponse> res = ioticsApi.feedAPIFuture().shareFeedData(request);
+            ListenableFuture<ShareFeedDataResponse> res = ioticsApi.feedAPIFuture().shareFeedData(request.get());
             Futures.addCallback(res, new FutureCallback<>() {
 
                 @Override
@@ -216,11 +208,11 @@ public class IoticsPublisher extends AbstractProcessor {
         }
     }
 
-    private ShareFeedDataRequest newShareFeedDataRequest(StreamEvent event) {
-        if (event.port().payloadAsJson() == null) {
-            return null;
+    private Optional<ShareFeedDataRequest> newShareFeedDataRequest(StreamEvent event) {
+        if (event.port().payloadAsJson().isEmpty()) {
+            return Optional.empty();
         }
-        return ShareFeedDataRequest.newBuilder()
+        return Optional.of(ShareFeedDataRequest.newBuilder()
                 .setHeaders(Builders.newHeadersBuilder(sim.agentIdentity()))
                 .setArgs(ShareFeedDataRequest.Arguments.newBuilder()
                         .setFeedId(FeedID.newBuilder()
@@ -231,10 +223,10 @@ public class IoticsPublisher extends AbstractProcessor {
                         .build())
                 .setPayload(ShareFeedDataRequest.Payload.newBuilder()
                         .setSample(FeedData.newBuilder()
-                                .setData(ByteString.copyFromUtf8(Objects.requireNonNull(event.port().payloadAsJson())))
+                                .setData(ByteString.copyFromUtf8(event.port().payloadAsJson().get()))
                                 .build())
                         .build())
-                .build();
+                .build());
     }
 
     private String makeCacheKey(StreamEvent event) {

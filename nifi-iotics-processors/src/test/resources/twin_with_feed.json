@@ -1,0 +1,85 @@
+{
+  "hostDid": "did:iotics:1",
+  "id": "did:iotics:2",
+  "properties": [
+    {
+      "key": "http://data.iotics.com/nifi/isOperational",
+      "value": "true",
+      "type": "Literal",
+      "dataType": "boolean"
+    },
+    {
+      "key": "http://data.iotics.com/public#hostAllowList",
+      "value": "http://data.iotics.com/public#none",
+      "type": "Uri"
+    },
+    {
+      "key": "http://data.iotics.com/public#hostMetadataAllowList",
+      "value": "http://data.iotics.com/public#none",
+      "type": "Uri"
+    },
+    {
+      "key": "http://schema.org/color",
+      "value": "Red",
+      "type": "StringLiteral"
+    },
+    {
+      "key": "http://schema.org/identifier",
+      "value": "9876547",
+      "type": "StringLiteral"
+    },
+    {
+      "key": "http://schema.org/manufacturer",
+      "value": "Alfa",
+      "type": "StringLiteral"
+    },
+    {
+      "key": "http://schema.org/model",
+      "value": "Giulia",
+      "type": "StringLiteral"
+    },
+    {
+      "key": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+      "value": "http://schema.org/Car",
+      "type": "Uri"
+    },
+    {
+      "key": "http://www.w3.org/2000/01/rdf-schema#comment",
+      "value": "Well maintained",
+      "type": "StringLiteral"
+    },
+    {
+      "key": "http://www.w3.org/2000/01/rdf-schema#label",
+      "value": "Alfa Giulia 9876547",
+      "type": "StringLiteral"
+    },
+    {
+      "key": "https://data.iotics.com/nifi/units",
+      "value": "5",
+      "type": "Literal",
+      "dataType": "integer"
+    }
+  ],
+  "feeds": [
+    {
+      "id": "status",
+      "properties": [
+        {
+          "key": "http://www.w3.org/2000/01/rdf-schema#comment",
+          "value": "Current operational status of this car",
+          "type": "StringLiteral"
+        },
+        {
+          "key": "http://www.w3.org/2000/01/rdf-schema#label",
+          "value": "OperationalStatus",
+          "type": "StringLiteral"
+        }
+      ],
+      "storeLast": true
+    }
+  ],
+  "inputs": []
+}
+
+
+
