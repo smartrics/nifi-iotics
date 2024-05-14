@@ -61,9 +61,7 @@ import static smartrics.iotics.nifi.processors.Constants.*;
 @Tags({"IOTICS", "TWIN CREATOR"})
 @CapabilityDescription("""
 Transforms a JSON-LD object into a twin. It's meant to be used using flow files outputted by the JOLT processor and the JSON-LD should be compatible with the shape of an IOTICS twin.
-In practice, it needs to be a key-value map with no complex objects as values.
-
-In order to determine the twin identity, the JSON-LD is expected to have an attribute with type http://schema.org/identifier. To determine the string used to create the identity, the scheme is removed from the IRI and used as a key name in the IOTICS Identity API.
+In practice, it needs to be a key-value map with no complex objects as values. In order to determine the twin identity, the JSON-LD is expected to have an attribute with type http://schema.org/identifier. To determine the string used to create the identity, the scheme is removed from the IRI and used as a key name in the IOTICS Identity API.
 """)
 @ReadsAttributes({@ReadsAttribute(attribute = "", description = "")})
 @WritesAttributes({@WritesAttribute(attribute = "", description = "")})
@@ -72,8 +70,7 @@ public class IoticsJSONLDToTwin extends AbstractProcessor {
     public static PropertyDescriptor DEFAULT_ALLOW_LIST_PROP = new PropertyDescriptor
             .Builder().name("allowListProperty")
             .displayName("Allow Remote Access")
-            .description("Specify whether this twin is visible remotely or not. " +
-                    "Allowed values 'http://data.iotics.com/public#all', 'http://data.iotics.com/public#none', or a list of host DIDs separate by comma")
+            .description("Specify whether this twin is visible remotely or not.")
             .required(true)
             .defaultValue("http://data.iotics.com/public#none")
             .addValidator(new AllowListEntryValidator())
