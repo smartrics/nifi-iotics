@@ -19,9 +19,11 @@ package smartrics.iotics.nifi.processors;
 import com.github.jsonldjava.core.JsonLdOptions;
 import com.github.jsonldjava.core.JsonLdProcessor;
 import com.github.jsonldjava.core.RDFDataset;
+import com.github.jsonldjava.utils.JsonUtils;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.iotics.api.TwinID;
@@ -37,6 +39,7 @@ import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.*;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.jetbrains.annotations.NotNull;
 import smartrics.iotics.host.IoticsApi;
 import smartrics.iotics.identity.Identity;
@@ -45,6 +48,8 @@ import smartrics.iotics.nifi.processors.tools.AllowListEntryValidator;
 import smartrics.iotics.nifi.processors.objects.JsonLdTwin;
 import smartrics.iotics.nifi.services.IoticsHostService;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -58,18 +63,19 @@ import static smartrics.iotics.nifi.processors.Constants.*;
 Transforms a JSON-LD object into a twin. It's meant to be used using flow files outputted by the JOLT processor and the JSON-LD should be compatible with the shape of an IOTICS twin.
 In practice, it needs to be a key-value map with no complex objects as values.
 
-The key referenced by "ID Property" must be present, in order to determine the Identity of this twin.
-        """)
+In order to determine the twin identity, the JSON-LD is expected to have an attribute with type http://schema.org/identifier. To determine the string used to create the identity, the scheme is removed from the IRI and used as a key name in the IOTICS Identity API.
+""")
 @ReadsAttributes({@ReadsAttribute(attribute = "", description = "")})
 @WritesAttributes({@WritesAttribute(attribute = "", description = "")})
 public class IoticsJSONLDToTwin extends AbstractProcessor {
 
     public static PropertyDescriptor ID_PROP = new PropertyDescriptor
-            .Builder().name("idProperty")
-            .displayName("ID Property")
-            .description("property in the incoming flow file that defines the key name for this twin")
+            .Builder().name("idProp")
+            .displayName("ID property")
+            .description("This property should be present in the input flow file to identify the value used to determine the twin Identity. This value is then passed to the Identity library as KeyName.")
             .required(true)
-            .addValidator(StandardValidators.NON_BLANK_VALIDATOR)
+            .defaultValue("http://schema.org/identifier")
+            .addValidator(StandardValidators.URI_VALIDATOR)
             .build();
 
     public static PropertyDescriptor DEFAULT_ALLOW_LIST_PROP = new PropertyDescriptor
@@ -78,6 +84,7 @@ public class IoticsJSONLDToTwin extends AbstractProcessor {
             .description("Specify whether this twin is visible remotely or not. " +
                     "Allowed values 'http://data.iotics.com/public#all', 'http://data.iotics.com/public#none', or a list of host DIDs separate by comma")
             .required(true)
+            .defaultValue("http://data.iotics.com/public#none")
             .addValidator(new AllowListEntryValidator())
             .build();
 
@@ -114,22 +121,22 @@ public class IoticsJSONLDToTwin extends AbstractProcessor {
     }
 
 
-    private Optional<ListenableFuture<UpsertTwinResponse>> processJsonObject(
+    private ListenableFuture<UpsertTwinResponse> processFlow(
             final ProcessContext context,List<RDFDataset.Quad> quads) {
         // map keys
-        String jsonIdProp = context.getProperty(ID_PROP).getValue();
         String allowListProp = context.getProperty(DEFAULT_ALLOW_LIST_PROP).getValue();
 
+        final String idPropValue = context.getProperty(ID_PROP).getValue();
         Optional<RDFDataset.Quad> res = quads.stream().filter(quad ->
-                quad.getPredicate().getValue().equals(jsonIdProp)).findFirst();
+                quad.getPredicate().getValue().equals(idPropValue)).findFirst();
 
         if(res.isEmpty()) {
-            return Optional.empty();
+            return exceptionFuture("invalid JSON-LD: missing '" + idPropValue + "'");
         }
         String twinIdentifier = res.get().getObject().getValue();
         Identity myIdentity = sim.newTwinIdentityWithControlDelegation(twinIdentifier, "#masterKey");
         JsonLdTwin twin = new JsonLdTwin(getLogger(), ioticsApi, sim, quads, myIdentity,allowListProp);
-        return Optional.of(twin.upsert());
+        return twin.upsert();
     }
 
     @Override
@@ -151,36 +158,15 @@ public class IoticsJSONLDToTwin extends AbstractProcessor {
 
         final CountDownLatch waitForCompletion = new CountDownLatch(1);
         session.read(flowFile, in -> {
-            try {
-                JsonLdOptions options = new JsonLdOptions();
-                // Convert JSON-LD to RDF triples
-                RDFDataset dataset = (RDFDataset) JsonLdProcessor.toRDF(in, options);
-
-                Iterator<String> gIt = dataset.keySet().iterator();
-                if(!gIt.hasNext()) {
-                    return;
+            ListenableFuture<UpsertTwinResponse> fut = processFlow(context, in);
+            fut.addListener(() -> {
+                try {
+                    twinID.set(fut.resultNow().getPayload().getTwinId());
+                } catch (IllegalStateException e) {
+                    error.set(fut.exceptionNow());
                 }
-                String defaultGraph = gIt.next();
-                List<RDFDataset.Quad> quads = dataset.getQuads(defaultGraph);
-
-                Optional<ListenableFuture<UpsertTwinResponse>> result = processJsonObject(context, quads);
-                if(result.isEmpty()) {
-                    waitForCompletion.countDown();
-                } else {
-                    ListenableFuture<UpsertTwinResponse> fut = result.get();
-                    fut.addListener(() -> {
-                        try {
-                            twinID.set(fut.resultNow().getPayload().getTwinId());
-                        } catch (IllegalStateException e) {
-                            error.set(fut.exceptionNow());
-                        }
-                        waitForCompletion.countDown();
-                    }, executor);
-                }
-            } catch (Exception ex) {
-                getLogger().error("Failed to read json string.", ex);
-                throw new ProcessException(ex.getMessage(), ex);
-            }
+                waitForCompletion.countDown();
+            }, executor);
         });
         try {
             waitForCompletion.await();
@@ -191,16 +177,41 @@ public class IoticsJSONLDToTwin extends AbstractProcessor {
         }
 
         if(error.get() != null) {
-            session.write(flowFile, out -> out.write(error.get().getMessage().getBytes(StandardCharsets.UTF_8)));
-
+            session.write(flowFile, out -> out.write(new Gson().toJson(
+                    Map.of("error", error.get().getMessage()))
+                    .getBytes(StandardCharsets.UTF_8)));
+            session.transfer(flowFile, FAILURE);
         } else {
             if(twinID.get() != null) {
                 FlowFile success = session.create(flowFile);
-                session.write(success, out -> out.write(new Gson().toJson(Map.of("hostId", twinID.get().getHostId(), "id",twinID.get().getId())).getBytes(StandardCharsets.UTF_8)));
+                session.write(success, out -> out.write(new Gson().toJson(
+                        Map.of("hostId", twinID.get().getHostId(),
+                                "id",twinID.get().getId()))
+                        .getBytes(StandardCharsets.UTF_8)));
                 session.transfer(success, SUCCESS);
             }
             session.transfer(flowFile, ORIGINAL);
         }
+    }
+
+    private ListenableFuture<UpsertTwinResponse> processFlow(ProcessContext context, InputStream in) throws IOException {
+        JsonLdOptions options = new JsonLdOptions();
+        RDFDataset dataset;
+        try {
+            Object jsonObject = JsonUtils.fromInputStream(in);
+            // Convert JSON-LD to RDF triples
+            dataset = (RDFDataset) JsonLdProcessor.toRDF(jsonObject, options);
+        } catch (Exception e) {
+            return exceptionFuture("invalid JSON-LD: " + e.getMessage());
+        }
+        Iterator<String> gIt = dataset.keySet().iterator();
+        if(!gIt.hasNext()) {
+            return exceptionFuture("invalid JSON-LD: missing graph");
+        }
+        String defaultGraph = gIt.next();
+        List<RDFDataset.Quad> quads = dataset.getQuads(defaultGraph);
+
+        return processFlow(context, quads);
     }
 
     private void processFuture(ListenableFuture<UpsertTwinResponse> f, CountDownLatch latch, JsonArray successes, JsonArray failures) {
@@ -221,4 +232,11 @@ public class IoticsJSONLDToTwin extends AbstractProcessor {
             }
         }, executor);
     }
+
+    private static @NotNull SettableFuture<UpsertTwinResponse> exceptionFuture(String message) {
+        SettableFuture<UpsertTwinResponse> f = SettableFuture.create();
+        f.setException(new IllegalArgumentException(message));
+        return f;
+    }
+
 }

@@ -30,8 +30,10 @@ import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static smartrics.iotics.nifi.processors.IoticsControllerServiceFactory.injectIoticsHostService;
+import static smartrics.iotics.nifi.processors.IoticsJSONLDToTwin.ID_PROP;
 
 public class IoticsJSONLDToTwinIT {
 
@@ -41,27 +43,89 @@ public class IoticsJSONLDToTwinIT {
     public void init() throws Exception {
         testRunner = TestRunners.newTestRunner(IoticsJSONLDToTwin.class);
         injectIoticsHostService(testRunner);
-        testRunner.setProperty(IoticsJSONLDToTwin.ID_PROP, "https://data.iotics.com/nifi/id");
     }
 
     @Test
-    public void testProcessor() throws IOException {
-        String content = Files.readString(Path.of("src\\test\\resources\\car.json"));
+    public void missingIdentifierTransitionsToFail() throws IOException {
+        testRunner.enqueue("""
+{
+  "@context": {
+    "label": "rdfs:label"
+  },
+  "@type": "http://schema.org/Car",
+  "label": "Toyota Camry 1"
+}
+""");
+        testRunner.run(1);
+        //assert the input Q is empty and the flowfile is processed
+        testRunner.assertQueueEmpty();
+        testRunner.setProperty(ID_PROP.getName(), "http://schema.org/identifier");
+        List<MockFlowFile> failure = testRunner.getFlowFilesForRelationship(Constants.FAILURE);
+//        assertThat("Number of flowfiles in Fail Queue is as expected (No of Flowfile = 1) ", failure.size() == 1);
+        MockFlowFile outputFlowfile = failure.getFirst();
+        String outputFlowfileContent = new String(testRunner.getContentAsByteArray(outputFlowfile));
+        Gson gson = new Gson();
+        Map<String, Object> json = (Map<String, Object>)gson.fromJson(outputFlowfileContent, Map.class);
+        assertThat(json.get("error").toString(), is(equalTo("invalid JSON-LD: missing 'http://schema.org/identifier'")));
+    }
+
+    @Test
+    public void invalidJsonTransitionsToFail() throws IOException {
+        testRunner.enqueue("""
+{
+  "@context": {
+    "label": "rdfs:label",
+  },
+}
+""");
+        testRunner.run(1);
+        //assert the input Q is empty and the flowfile is processed
+        testRunner.assertQueueEmpty();
+        List<MockFlowFile> failure = testRunner.getFlowFilesForRelationship(Constants.FAILURE);
+//        assertThat("Number of flowfiles in Fail Queue is as expected (No of Flowfile = 1) ", failure.size() == 1);
+        MockFlowFile outputFlowfile = failure.getFirst();
+        String outputFlowfileContent = new String(testRunner.getContentAsByteArray(outputFlowfile));
+        Gson gson = new Gson();
+        Map<String, Object> json = (Map<String, Object>)gson.fromJson(outputFlowfileContent, Map.class);
+        assertThat(json.get("error").toString(), containsString("invalid JSON-LD: Unexpected character"));
+    }
+
+    @Test
+    public void successTransitionGetsTheDID() throws IOException {
+        String content = Files.readString(Path.of("src\\test\\resources\\car_twin.json"));
         testRunner.enqueue(content);
         testRunner.run(1);
         //assert the input Q is empty and the flowfile is processed
         testRunner.assertQueueEmpty();
-        List<MockFlowFile> results = testRunner.getFlowFilesForRelationship(Constants.SUCCESS);
-        assertThat("Number of flowfiles in Success Queue is as expected (No of Flowfile = 1) ", results.size() == 1);
-
-        MockFlowFile outputFlowfile = results.getFirst();
+        List<MockFlowFile> success = testRunner.getFlowFilesForRelationship(Constants.SUCCESS);
+        MockFlowFile outputFlowfile = success.getFirst();
         String outputFlowfileContent = new String(testRunner.getContentAsByteArray(outputFlowfile));
         Gson gson = new Gson();
-        Map<String, Object> json = gson.fromJson(outputFlowfileContent, Map.class);
+        Map<String, Object> json = (Map<String, Object>)gson.fromJson(outputFlowfileContent, Map.class);
+        assertNotNull(json.get("hostId"));
+        assertNotNull(json.get("id"));
 
-        assertEquals(json.size(), 2);
-        assertEquals(10, ((List) json.get("successes")).size());
-        assertEquals(0, ((List) json.get("failures")).size());
+        List<MockFlowFile> original = testRunner.getFlowFilesForRelationship(Constants.ORIGINAL);
+        assertThat("Number of flowfiles in Original Queue is as expected (No of Flowfile = 1) ", original.size() == 1);
+
+
+    }
+    @Test
+    public void originalTransitionRetrievesTheInputFlowFile() throws IOException {
+        String content = Files.readString(Path.of("src\\test\\resources\\car_twin.json"));
+        testRunner.enqueue(content);
+        testRunner.run(1);
+        //assert the input Q is empty and the flowfile is processed
+        testRunner.assertQueueEmpty();
+        List<MockFlowFile> original = testRunner.getFlowFilesForRelationship(Constants.ORIGINAL);
+        assertThat("Number of flowfiles in Original Queue is as expected (No of Flowfile = 1) ", original.size() == 1);
+
+        MockFlowFile outputFlowfile = original.getFirst();
+        String outputFlowfileContent = new String(testRunner.getContentAsByteArray(outputFlowfile));
+        Gson gson = new Gson();
+        Map<String, Object> json = (Map<String, Object>)gson.fromJson(outputFlowfileContent, Map.class);
+
+        assertThat(json.get("ID").toString(), is(equalTo("1")));
     }
 
 }

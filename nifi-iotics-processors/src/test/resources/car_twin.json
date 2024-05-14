@@ -1,4 +1,16 @@
 {
+  "@context": {
+    "isOperational": "http://data.iotics.com/nifi/isOperational",
+    "Units": "https://data.iotics.com/nifi/units",
+    "label": "rdfs:label",
+    "Colour": "http://schema.org/color",
+    "Comment": "rdfs:comment",
+    "ID": "http://schema.org/identifier",
+    "Model": "http://schema.org/model",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "Make": "http://schema.org/manufacturer"
+  },
+  "@type": "http://schema.org/Car",
   "ID": "1",
   "Make": "Toyota",
   "Model": "Camry",
@@ -6,17 +18,5 @@
   "isOperational": true,
   "Comment": "Well maintained",
   "Units": 5,
-  "label": "Toyota Camry 1",
-  "@context": {
-    "isOperational": "https://data.iotics.com/nifi/isOperational",
-    "Units": "https://data.iotics.com/nifi/units",
-    "label": "rdfs:label",
-    "Colour": "http://schema.org/color",
-    "comment": "rdfs:comment",
-    "ID": "http://schema.org/identifier",
-    "Model": "http://schema.org/model",
-    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
-    "Make": "http://schema.org/manufacturer"
-  },
-  "@type": "http://schema.org/Car"
+  "label": "Toyota Camry 1"
 }

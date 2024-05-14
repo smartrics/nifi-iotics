@@ -1,6 +1,9 @@
 package smartrics.iotics.nifi.processors.objects;
 
+import com.github.jsonldjava.core.JsonLdOptions;
+import com.github.jsonldjava.core.JsonLdProcessor;
 import com.github.jsonldjava.core.RDFDataset;
+import com.github.jsonldjava.utils.JsonUtils;
 import com.iotics.api.LangLiteral;
 import com.iotics.api.Literal;
 import com.iotics.api.Property;
@@ -18,7 +21,10 @@ import smartrics.iotics.host.UriConstants;
 import smartrics.iotics.identity.Identity;
 import smartrics.iotics.identity.SimpleIdentityManager;
 
+import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
@@ -129,6 +135,25 @@ class JsonLdTwinTest {
             }
         });
         assertThat(t.getMessage(), is(equalTo("invalid default for allow list value: wrong:thing")));
+    }
+
+    @Test
+    void readsFullTwin() throws IOException {
+        String content = Files.readString(Path.of("src\\test\\resources\\car_twin.json"));
+        Object jsonObject = JsonUtils.fromString(content);
+        JsonLdOptions options = new JsonLdOptions();
+        // Convert JSON-LD to RDF triples
+        RDFDataset dataset = (RDFDataset) JsonLdProcessor.toRDF(jsonObject, options);
+
+        // Output RDF triples
+        for (String graphName : dataset.keySet()) {
+            for (RDFDataset.Quad quad : dataset.getQuads(graphName)) {
+                System.out.println("Graph: " + graphName
+                        + " Subject: " + quad.getSubject().getValue()
+                        + ", Predicate: " + quad.getPredicate().getValue()
+                        + ", Object: " + quad.getObject().getValue());
+            }
+        }
     }
 
     private @NotNull JsonLdTwin newTwin(List<RDFDataset.Quad> quads) {
