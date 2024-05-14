@@ -8,7 +8,6 @@
   {
     "operation": "modify-overwrite-beta",
     "spec": {
-      "@id": "_:@(1,ID))",
       "Units": "=toInteger(@(1,Units))",
       "isOperational": "=toBoolean(@(1,isOperational))",
       "label": "=concat(@(1,Make), ' ', @(1,Model), ' ', @(1,ID))"
