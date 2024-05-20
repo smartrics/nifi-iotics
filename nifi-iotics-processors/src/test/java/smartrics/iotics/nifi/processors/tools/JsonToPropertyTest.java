@@ -15,9 +15,7 @@ class JsonToPropertyTest {
     @Test
     public void testFromJsonMissingKey() {
         JsonObject o = new JsonObject();
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            fromJson(o);
-        });
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> fromJson(o));
         assertThat(exception.getMessage(), is("Invalid property: missing \"key\""));
     }
 
@@ -26,9 +24,7 @@ class JsonToPropertyTest {
         JsonObject o = new JsonObject();
         o.addProperty("key", "someKey");
         o.addProperty("literal", "someLiteral");
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            fromJson(o);
-        });
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> fromJson(o));
         assertThat(exception.getMessage(), is("Invalid property: literal without \"dataType\""));
     }
 
@@ -37,9 +33,7 @@ class JsonToPropertyTest {
         JsonObject o = new JsonObject();
         o.addProperty("key", "someKey");
         o.addProperty("langLiteral", "someLangLiteral");
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            fromJson(o);
-        });
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> fromJson(o));
         assertThat(exception.getMessage(), is("Invalid property: langLiteral without \"lang\""));
     }
 
@@ -47,9 +41,7 @@ class JsonToPropertyTest {
     public void testFromJsonMissingAllOptionalFields() {
         JsonObject o = new JsonObject();
         o.addProperty("key", "someKey");
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            fromJson(o);
-        });
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> fromJson(o));
         assertThat(exception.getMessage(), is("Invalid property: missing one of \"uri\", \"literal\", \"stringLiteral\", \"langLiteral\" "));
     }
 
