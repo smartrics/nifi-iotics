@@ -4,7 +4,8 @@ import org.apache.nifi.components.ValidationResult;
 import org.junit.jupiter.api.Test;
 import smartrics.iotics.host.UriConstants;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AllowListEntryValidatorTest {
 

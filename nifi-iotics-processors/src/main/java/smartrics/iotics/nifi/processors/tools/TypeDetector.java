@@ -10,11 +10,11 @@ import java.util.Optional;
 public class TypeDetector {
 
     public static Optional<XsdDatatype> detectAbsoluteUri(String maybeUri) {
-            URI uri = URI.create(maybeUri);
-            if (uri.isAbsolute()) {
-                return Optional.of(XsdDatatype.anyURI);
-            }
-            return Optional.empty();
+        URI uri = URI.create(maybeUri);
+        if (uri.isAbsolute()) {
+            return Optional.of(XsdDatatype.anyURI);
+        }
+        return Optional.empty();
     }
 
     public static Optional<XsdDatatype> detectDateTimeType(String maybeADateTime) {

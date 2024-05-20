@@ -1,6 +1,5 @@
 package smartrics.iotics.nifi.processors;
 
-import com.google.gson.Gson;
 import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
@@ -10,16 +9,18 @@ import org.junit.jupiter.api.Test;
 import smartrics.iotics.nifi.services.BasicIoticsHostService;
 
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static java.lang.Thread.sleep;
 import static smartrics.iotics.nifi.processors.Constants.SUCCESS;
 import static smartrics.iotics.nifi.processors.IoticsControllerServiceFactory.injectIoticsHostService;
 import static smartrics.iotics.nifi.processors.MyTwinMaker.makeMyTwin;
 
 public class IoticsFollowerIT {
     private TestRunner testRunner;
-    private BasicIoticsHostService service;
     private ExecutorService executor;
     private MyTwinMaker myTwinMaker;
     private AtomicBoolean stop;
@@ -32,7 +33,7 @@ public class IoticsFollowerIT {
     @BeforeEach
     public void init() throws Exception {
         testRunner = TestRunners.newTestRunner(IoticsFollower.class);
-        service = injectIoticsHostService(testRunner);
+        BasicIoticsHostService service = injectIoticsHostService(testRunner);
 
         testRunner.setProperty(IoticsFollower.FOLLOWER_LABEL, "MyTestTwin");
         testRunner.setProperty(IoticsFollower.FOLLOWER_COMMENT, "My Test twin to check workings of find/bind in NiFi");
@@ -42,13 +43,7 @@ public class IoticsFollowerIT {
         myTwinMaker = makeMyTwin(service);
         stop = new AtomicBoolean(false);
         myTwinMaker.updatePayload();
-        executor.submit(() -> {
-            while(!stop.get()) {
-                delay(100);
-                myTwinMaker.updatePayload();
-                myTwinMaker.share();
-            }
-        });
+        executor.submit(this::run);
     }
 
     @Test
@@ -63,9 +58,9 @@ public class IoticsFollowerIT {
             testRunner.assertQueueEmpty();
         });
         executor.submit(() -> {
-            while(!stop.get()) {
+            while (!stop.get()) {
                 List<MockFlowFile> results = testRunner.getFlowFilesForRelationship(SUCCESS);
-                if(!results.isEmpty()){
+                if (!results.isEmpty()) {
                     results.forEach(action -> {
                         String outputFlowfileContent = new String(testRunner.getContentAsByteArray(action));
                         System.out.println("received " + " / " + results.size() + " / " + latch.getCount() + ": " + outputFlowfileContent);
@@ -77,7 +72,7 @@ public class IoticsFollowerIT {
                     break;
                 }
             }
-            while(stop.get() && latch.getCount()>0) {
+            while (stop.get() && latch.getCount() > 0) {
                 latch.countDown();
             }
 
@@ -85,12 +80,18 @@ public class IoticsFollowerIT {
         latch.await();
     }
 
-    private static void delay(long ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+    @SuppressWarnings("BusyWait")
+    private void run() {
+        while (!stop.get()) {
+            try {
+                sleep(100);
+                myTwinMaker.updatePayload();
+                myTwinMaker.share();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+
         }
     }
-
 }

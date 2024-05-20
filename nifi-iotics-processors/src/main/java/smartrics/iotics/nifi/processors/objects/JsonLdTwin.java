@@ -2,8 +2,6 @@ package smartrics.iotics.nifi.processors.objects;
 
 import com.github.jsonldjava.core.RDFDataset;
 import com.iotics.api.*;
-import org.apache.nifi.logging.ComponentLog;
-import org.checkerframework.checker.units.qual.A;
 import smartrics.iotics.connectors.twins.AbstractTwin;
 import smartrics.iotics.connectors.twins.MappableMaker;
 import smartrics.iotics.connectors.twins.Mapper;
@@ -13,28 +11,22 @@ import smartrics.iotics.host.UriConstants;
 import smartrics.iotics.identity.Identity;
 import smartrics.iotics.identity.SimpleIdentityManager;
 import smartrics.iotics.nifi.processors.tools.AllowListEntryValidator;
-import smartrics.iotics.nifi.processors.tools.TypeDetector;
 
 import java.net.URI;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 public class JsonLdTwin extends AbstractTwin implements MappableMaker, Mapper {
 
     private final List<RDFDataset.Quad> source;
-    private final ComponentLog logger;
     private final String defAllowListValue;
 
-    public JsonLdTwin(ComponentLog logger, IoticsApi api, SimpleIdentityManager sim,
+    public JsonLdTwin(IoticsApi api, SimpleIdentityManager sim,
                       List<RDFDataset.Quad> quads, Identity myIdentity,
                       String defAllowListValue) {
         super(api, sim, myIdentity);
         this.source = quads;
-        this.logger = logger;
         this.defAllowListValue = AllowListEntryValidator.toValidString(defAllowListValue)
                 .orElseThrow(() -> new IllegalArgumentException("invalid default for allow list value: " + defAllowListValue));
     }
@@ -58,13 +50,13 @@ public class JsonLdTwin extends AbstractTwin implements MappableMaker, Mapper {
             String predicateValue = quad.getPredicate().getValue();
             Property.Builder pBuilder = Property.newBuilder().setKey(predicateValue);
             String objValue = quad.getObject().getValue();
-            if(predicateValue.equals(UriConstants.IOTICSProperties.HostAllowListName)) {
+            if (predicateValue.equals(UriConstants.IOTICSProperties.HostAllowListName)) {
                 Optional<String> res = AllowListEntryValidator.toValidString(quad.getObject().getValue());
                 discoveredAllowListValue.set(res.orElse(defAllowListValue));
             } else {
-                if(quad.getObject().isIRI()) {
+                if (quad.getObject().isIRI()) {
                     pBuilder.setUriValue(Uri.newBuilder().setValue(quad.getObject().getValue()).build());
-                } else if(quad.getObject().isLiteral()){
+                } else if (quad.getObject().isLiteral()) {
                     // is literal
                     if (quad.getObject().getLanguage() != null) {
                         pBuilder.setLangLiteralValue(LangLiteral.newBuilder()
@@ -91,12 +83,12 @@ public class JsonLdTwin extends AbstractTwin implements MappableMaker, Mapper {
         });
 
         String v = discoveredAllowListValue.get();
-        if(v == null) {
+        if (v == null) {
             v = defAllowListValue;
         }
         payloadBuilder.addProperties(Property.newBuilder()
-                        .setKey(UriConstants.IOTICSProperties.HostAllowListName)
-                        .setUriValue(Uri.newBuilder().setValue(v).build())
+                .setKey(UriConstants.IOTICSProperties.HostAllowListName)
+                .setUriValue(Uri.newBuilder().setValue(v).build())
                 .build());
         UpsertTwinRequest.Payload payload = payloadBuilder.build();
         reqBuilder.setPayload(payload);

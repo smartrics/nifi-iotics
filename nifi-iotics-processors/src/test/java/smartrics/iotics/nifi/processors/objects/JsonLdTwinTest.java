@@ -8,11 +8,9 @@ import com.iotics.api.LangLiteral;
 import com.iotics.api.Literal;
 import com.iotics.api.Property;
 import com.iotics.api.Uri;
-import org.apache.nifi.logging.ComponentLog;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.function.Executable;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import smartrics.iotics.connectors.twins.annotations.XsdDatatype;
@@ -41,9 +39,6 @@ class JsonLdTwinTest {
 
     @Mock
     public SimpleIdentityManager sim;
-
-    @Mock
-    public ComponentLog logger;
 
     private Identity myId;
 
@@ -112,7 +107,7 @@ class JsonLdTwinTest {
     void addAllowListPropFromDefaultIfNotPresent() {
         List<RDFDataset.Quad> quads = List.of();
         String defAllowListValue = "did:iotics:1,did:iotics:2";
-        twin = new JsonLdTwin(logger, api, sim, quads, myId, defAllowListValue);
+        twin = new JsonLdTwin(api, sim, quads, myId, defAllowListValue);
         Uri uri = findURI(UriConstants.IOTICSProperties.HostAllowListName).orElseThrow().getUriValue();
         assertThat(uri.getValue(), is(equalTo(defAllowListValue)));
     }
@@ -121,19 +116,15 @@ class JsonLdTwinTest {
     void addAllowListPropFromQuadsIfPresent() {
         List<RDFDataset.Quad> quads = List.of(q(UriConstants.IOTICSProperties.HostAllowListName, UriConstants.IOTICSProperties.HostAllowListValues.ALL.toString()));
         String defAllowListValue = "did:iotics:1,did:iotics:2";
-        twin = new JsonLdTwin(logger, api, sim, quads, myId, defAllowListValue);
+        twin = new JsonLdTwin(api, sim, quads, myId, defAllowListValue);
         Uri uri = findURI(UriConstants.IOTICSProperties.HostAllowListName).orElseThrow().getUriValue();
         assertThat(uri.getValue(), is(equalTo(UriConstants.IOTICSProperties.HostAllowListValues.ALL.toString())));
     }
 
     @Test
     void throwsIfDefAllowListInvalid() {
-        IllegalArgumentException t = assertThrows(IllegalArgumentException.class, new Executable() {
-            @Override
-            public void execute() {
-                new JsonLdTwin(logger, api, sim, List.of(), myId, "wrong:thing");
-            }
-        });
+        IllegalArgumentException t = assertThrows(IllegalArgumentException.class, () ->
+                new JsonLdTwin(api, sim, List.of(), myId, "wrong:thing"));
         assertThat(t.getMessage(), is(equalTo("invalid default for allow list value: wrong:thing")));
     }
 
@@ -157,7 +148,7 @@ class JsonLdTwinTest {
     }
 
     private @NotNull JsonLdTwin newTwin(List<RDFDataset.Quad> quads) {
-        return new JsonLdTwin(logger, api, sim, quads, myId, UriConstants.IOTICSProperties.HostAllowListValues.NONE.toString());
+        return new JsonLdTwin(api, sim, quads, myId, UriConstants.IOTICSProperties.HostAllowListValues.NONE.toString());
     }
 
     public Optional<Property> find(String key, String type) {

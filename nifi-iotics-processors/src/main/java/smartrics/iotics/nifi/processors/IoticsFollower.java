@@ -60,9 +60,9 @@ import static smartrics.iotics.nifi.processors.Constants.*;
 
 @Tags({"IOTICS", "DIGITAL TWIN", "FIND", "BIND", "FOLLOWER"})
 @CapabilityDescription("""
-Find and Bind to feeds. The processor runs an IOTICS search and, of the twins it finds, it follows all the feeds.
-Future enhancements: batch and batch sizes to improve performances
-""")
+        Find and Bind to feeds. The processor runs an IOTICS search and, of the twins it finds, it follows all the feeds.
+        Future enhancements: batch and batch sizes to improve performances
+        """)
 @WritesAttributes({
         @WritesAttribute(attribute = "followerTwinDid", description = "this follower's did"),
         @WritesAttribute(attribute = "hostDid", description = "the host where the share came from"),

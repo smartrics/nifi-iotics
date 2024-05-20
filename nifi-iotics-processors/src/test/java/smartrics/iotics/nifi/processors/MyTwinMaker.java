@@ -4,7 +4,10 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gson.Gson;
 import com.google.protobuf.ByteString;
 import com.iotics.api.*;
-import smartrics.iotics.connectors.twins.*;
+import smartrics.iotics.connectors.twins.AbstractTwin;
+import smartrics.iotics.connectors.twins.MappableMaker;
+import smartrics.iotics.connectors.twins.MappablePublisher;
+import smartrics.iotics.connectors.twins.Mapper;
 import smartrics.iotics.host.Builders;
 import smartrics.iotics.host.IoticsApi;
 import smartrics.iotics.identity.Identity;
@@ -19,11 +22,17 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class MyTwinMaker extends AbstractTwin implements MappableMaker, MappablePublisher, Mapper {
+    private final MyTwin twin;
+
+    public MyTwinMaker(MyTwin twin, IoticsApi ioticsApi, SimpleIdentityManager sim, Identity myIdentity) {
+        super(ioticsApi, sim, myIdentity);
+        this.twin = twin;
+    }
+
     public static MyTwinMaker makeMyTwin(BasicIoticsHostService service) throws Exception {
         CountDownLatch latch = new CountDownLatch(1);
         String content = Files.readString(Path.of("src\\test\\resources\\twin_with_feed.json"));
@@ -44,18 +53,11 @@ public class MyTwinMaker extends AbstractTwin implements MappableMaker, Mappable
         }, service.getExecutor());
         latch.await();
         TwinID twinID = ref.get();
-        if(twinID == null) {
+        if (twinID == null) {
             throw new IllegalStateException("operation not completed - twinID is null");
         }
         MyTwin myTwinWithId = new MyTwin(twinID.getHostId(), twinID.getId(), myTwin.properties(), myTwin.feeds(), myTwin.inputs());
         return new MyTwinMaker(myTwinWithId, service.getIoticsApi(), service.getSimpleIdentityManager(), twinIdentity);
-    }
-
-    private final MyTwin twin;
-
-    public MyTwinMaker(MyTwin twin, IoticsApi ioticsApi, SimpleIdentityManager sim, Identity myIdentity) {
-        super(ioticsApi, sim, myIdentity);
-        this.twin = twin;
     }
 
     public MyTwin twin() {
@@ -103,9 +105,7 @@ public class MyTwinMaker extends AbstractTwin implements MappableMaker, Mappable
 
     public void updatePayload() {
         // feeds have a single payload label called data
-        this.twin.feeds().forEach(f -> {
-            f.updatePayload(Map.of("data", UUID.randomUUID().toString()));
-        });
+        this.twin.feeds().forEach(f -> f.updatePayload(Map.of("data", UUID.randomUUID().toString())));
     }
 
     @Override

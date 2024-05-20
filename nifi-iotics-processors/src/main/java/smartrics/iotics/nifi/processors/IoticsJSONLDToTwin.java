@@ -20,35 +20,25 @@ import com.github.jsonldjava.core.JsonLdOptions;
 import com.github.jsonldjava.core.JsonLdProcessor;
 import com.github.jsonldjava.core.RDFDataset;
 import com.github.jsonldjava.utils.JsonUtils;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
 import com.iotics.api.TwinID;
 import com.iotics.api.UpsertTwinResponse;
-import org.apache.nifi.annotation.behavior.ReadsAttribute;
-import org.apache.nifi.annotation.behavior.ReadsAttributes;
-import org.apache.nifi.annotation.behavior.WritesAttribute;
-import org.apache.nifi.annotation.behavior.WritesAttributes;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.*;
 import org.apache.nifi.processor.exception.ProcessException;
-import org.apache.nifi.processor.util.StandardValidators;
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.jetbrains.annotations.NotNull;
 import smartrics.iotics.host.IoticsApi;
 import smartrics.iotics.identity.Identity;
 import smartrics.iotics.identity.SimpleIdentityManager;
-import smartrics.iotics.nifi.processors.tools.AllowListEntryValidator;
 import smartrics.iotics.nifi.processors.objects.JsonLdTwin;
+import smartrics.iotics.nifi.processors.tools.AllowListEntryValidator;
 import smartrics.iotics.nifi.services.IoticsHostService;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -60,11 +50,9 @@ import static smartrics.iotics.nifi.processors.Constants.*;
 
 @Tags({"IOTICS", "TWIN CREATOR"})
 @CapabilityDescription("""
-Transforms a JSON-LD object into a twin. It's meant to be used using flow files outputted by the JOLT processor and the JSON-LD should be compatible with the shape of an IOTICS twin.
-In practice, it needs to be a key-value map with no complex objects as values. In order to determine the twin identity, the JSON-LD is expected to have an attribute with type http://schema.org/identifier. To determine the string used to create the identity, the scheme is removed from the IRI and used as a key name in the IOTICS Identity API.
-""")
-@ReadsAttributes({@ReadsAttribute(attribute = "", description = "")})
-@WritesAttributes({@WritesAttribute(attribute = "", description = "")})
+        Transforms a JSON-LD object into a twin. It's meant to be used using flow files outputted by the JOLT processor and the JSON-LD should be compatible with the shape of an IOTICS twin.
+        In practice, it needs to be a key-value map with no complex objects as values. In order to determine the twin identity, the JSON-LD is expected to have an attribute with type http://schema.org/identifier. To determine the string used to create the identity, the scheme is removed from the IRI and used as a key name in the IOTICS Identity API.
+        """)
 public class IoticsJSONLDToTwin extends AbstractProcessor {
 
     public static PropertyDescriptor DEFAULT_ALLOW_LIST_PROP = new PropertyDescriptor
@@ -82,6 +70,12 @@ public class IoticsJSONLDToTwin extends AbstractProcessor {
     private IoticsApi ioticsApi;
     private SimpleIdentityManager sim;
     private ExecutorService executor;
+
+    private static @NotNull SettableFuture<UpsertTwinResponse> exceptionFuture(String message) {
+        SettableFuture<UpsertTwinResponse> f = SettableFuture.create();
+        f.setException(new IllegalArgumentException(message));
+        return f;
+    }
 
     @Override
     protected void init(final ProcessorInitializationContext context) {
@@ -108,9 +102,8 @@ public class IoticsJSONLDToTwin extends AbstractProcessor {
         return descriptors;
     }
 
-
     private ListenableFuture<UpsertTwinResponse> processFlow(
-            final ProcessContext context,List<RDFDataset.Quad> quads) {
+            final ProcessContext context, List<RDFDataset.Quad> quads) {
         // map keys
         String allowListProp = context.getProperty(DEFAULT_ALLOW_LIST_PROP).getValue();
 
@@ -118,12 +111,12 @@ public class IoticsJSONLDToTwin extends AbstractProcessor {
         Optional<RDFDataset.Quad> res = quads.stream().filter(quad ->
                 quad.getPredicate().getValue().equals(idPropValue)).findFirst();
 
-        if(res.isEmpty()) {
+        if (res.isEmpty()) {
             return exceptionFuture("invalid JSON-LD: missing '" + idPropValue + "'");
         }
         String twinIdentifier = res.get().getObject().getValue();
         Identity myIdentity = sim.newTwinIdentityWithControlDelegation(twinIdentifier, "#masterKey");
-        JsonLdTwin twin = new JsonLdTwin(getLogger(), ioticsApi, sim, quads, myIdentity,allowListProp);
+        JsonLdTwin twin = new JsonLdTwin(ioticsApi, sim, quads, myIdentity, allowListProp);
         return twin.upsert();
     }
 
@@ -164,17 +157,17 @@ public class IoticsJSONLDToTwin extends AbstractProcessor {
             throw new ProcessException("Timed out while waiting for result.", e);
         }
 
-        if(error.get() != null) {
+        if (error.get() != null) {
             session.write(flowFile, out -> out.write(new Gson().toJson(
-                    Map.of("error", error.get().getMessage()))
+                            Map.of("error", error.get().getMessage()))
                     .getBytes(StandardCharsets.UTF_8)));
             session.transfer(flowFile, FAILURE);
         } else {
-            if(twinID.get() != null) {
+            if (twinID.get() != null) {
                 FlowFile success = session.create(flowFile);
                 session.write(success, out -> out.write(new Gson().toJson(
-                        Map.of("hostId", twinID.get().getHostId(),
-                                "id",twinID.get().getId()))
+                                Map.of("hostId", twinID.get().getHostId(),
+                                        "id", twinID.get().getId()))
                         .getBytes(StandardCharsets.UTF_8)));
                 session.transfer(success, SUCCESS);
             }
@@ -182,7 +175,7 @@ public class IoticsJSONLDToTwin extends AbstractProcessor {
         }
     }
 
-    private ListenableFuture<UpsertTwinResponse> processFlow(ProcessContext context, InputStream in) throws IOException {
+    private ListenableFuture<UpsertTwinResponse> processFlow(ProcessContext context, InputStream in) {
         JsonLdOptions options = new JsonLdOptions();
         RDFDataset dataset;
         try {
@@ -193,38 +186,13 @@ public class IoticsJSONLDToTwin extends AbstractProcessor {
             return exceptionFuture("invalid JSON-LD: " + e.getMessage());
         }
         Iterator<String> gIt = dataset.keySet().iterator();
-        if(!gIt.hasNext()) {
+        if (!gIt.hasNext()) {
             return exceptionFuture("invalid JSON-LD: missing graph");
         }
         String defaultGraph = gIt.next();
         List<RDFDataset.Quad> quads = dataset.getQuads(defaultGraph);
 
         return processFlow(context, quads);
-    }
-
-    private void processFuture(ListenableFuture<UpsertTwinResponse> f, CountDownLatch latch, JsonArray successes, JsonArray failures) {
-        Futures.addCallback(f, new FutureCallback<>() {
-            @Override
-            public void onSuccess(UpsertTwinResponse result) {
-                latch.countDown();
-                String id = result.getPayload().getTwinId().getId();
-                successes.add(id);
-                getLogger().info("Processed successfully twin with did " + id);
-            }
-
-            @Override
-            public void onFailure(@NotNull Throwable ex) {
-                latch.countDown();
-                failures.add(ex.getMessage());
-                getLogger().warn("Processed unsuccessfully twin, message=" + ex.getMessage());
-            }
-        }, executor);
-    }
-
-    private static @NotNull SettableFuture<UpsertTwinResponse> exceptionFuture(String message) {
-        SettableFuture<UpsertTwinResponse> f = SettableFuture.create();
-        f.setException(new IllegalArgumentException(message));
-        return f;
     }
 
 }

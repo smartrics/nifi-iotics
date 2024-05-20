@@ -15,25 +15,15 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class AllowListEntryValidator implements Validator {
-    @Override
-    public ValidationResult validate(String subject, String value, ValidationContext context) {
-        Optional<String> validString = toValidString(value);
-        return (new ValidationResult.Builder())
-                .subject(subject)
-                .input(value)
-                .valid(validString.isPresent())
-                .explanation(subject + " must be one of 'ALL', 'NONE', list of  host DIDs separate by comma").build();
-    }
-
     public static Optional<String> toValidString(String value) {
-        if(value == null || value.isBlank()) {
+        if (value == null || value.isBlank()) {
             return Optional.empty();
         }
         try {
             Optional<String> found = Arrays.stream(UriConstants.IOTICSProperties.HostAllowListValues.values())
                     .map(UriConstants.IOTICSProperties.HostAllowListValues::toString)
                     .filter(string -> string.equals(value)).findFirst();
-            if(found.isPresent()) {
+            if (found.isPresent()) {
                 return found;
             }
         } catch (RuntimeException ignored) {
@@ -47,17 +37,27 @@ public class AllowListEntryValidator implements Validator {
         Function<String, Boolean> isValid = s -> s.startsWith("did:iotics:");
         Map<Boolean, List<String>> split = stringStream.collect(Collectors.groupingBy(isValid));
         List<String> invalidDiDs = split.get(Boolean.FALSE);
-        if(invalidDiDs != null) {
+        if (invalidDiDs != null) {
             return Optional.empty();
         }
         List<String> validDiDs = split.get(Boolean.TRUE);
-        if(validDiDs == null) {
+        if (validDiDs == null) {
             return Optional.empty();
         }
         String res = String.join(",", validDiDs);
-        if(res.isEmpty()) {
+        if (res.isEmpty()) {
             return Optional.empty();
         }
         return Optional.of(res);
+    }
+
+    @Override
+    public ValidationResult validate(String subject, String value, ValidationContext context) {
+        Optional<String> validString = toValidString(value);
+        return (new ValidationResult.Builder())
+                .subject(subject)
+                .input(value)
+                .valid(validString.isPresent())
+                .explanation(subject + " must be one of 'ALL', 'NONE', list of  host DIDs separate by comma").build();
     }
 }
