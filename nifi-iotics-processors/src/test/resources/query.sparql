@@ -1,9 +1,0 @@
-PREFIX ev: <https://data.iotics.com/ont/ev#>
-
-SELECT ?status (COUNT(?s) AS ?count)
-WHERE {
-    ?s a ev:ElectricVehicleChargingStationConnection ;
-       ev:isOperational ?isOperational .
-    BIND(IF(?isOperational, "Operational", "Non Operational") AS ?status)
-}
-GROUP BY ?status
