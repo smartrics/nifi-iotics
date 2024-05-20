@@ -9,12 +9,14 @@ import org.apache.nifi.util.TestRunners;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.is;
 import static smartrics.iotics.nifi.processors.IoticsControllerServiceFactory.injectIoticsHostService;
 
 public class IoticsSPARQLQueryIT {
@@ -24,13 +26,27 @@ public class IoticsSPARQLQueryIT {
     public void init() throws Exception {
         testRunner = TestRunners.newTestRunner(IoticsSPARQLQuery.class);
         injectIoticsHostService(testRunner);
-        String content = Files.readString(Path.of("src\\test\\resources\\car_query.sparql"));
-        testRunner.setProperty(IoticsSPARQLQuery.SPARQL_QUERY, content);
         testRunner.setProperty(Constants.QUERY_SCOPE, "LOCAL");
     }
 
     @Test
-    public void testProcessor() {
+    public void testProcessorWithInput() throws IOException {
+        testRunner.enqueue("""
+                PREFIX schema: <http://schema.org/>
+                PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+                SELECT (COUNT(?car) AS ?numberOfCars)
+                WHERE {
+                  ?car a schema:Car .
+                }
+                """);
+        run();
+    }
+
+    private void run() throws IOException {
+        String content = Files.readString(Path.of("src\\test\\resources\\car_query.sparql"));
+        testRunner.setProperty(IoticsSPARQLQuery.SPARQL_QUERY, content);
+
         testRunner.run(1);
         //assert the input Q is empty and the flowfile is processed
         testRunner.assertQueueEmpty();

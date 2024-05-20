@@ -35,9 +35,15 @@ import smartrics.iotics.host.IoticsApi;
 import smartrics.iotics.identity.SimpleIdentityManager;
 import smartrics.iotics.nifi.services.IoticsHostService;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static smartrics.iotics.nifi.processors.Constants.*;
@@ -61,6 +67,12 @@ public class IoticsSPARQLQuery extends AbstractProcessor {
     private IoticsApi ioticsApi;
     private SimpleIdentityManager sim;
 
+    public static String readInputStream(InputStream inputStream) throws IOException {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+            return reader.lines().collect(Collectors.joining(System.lineSeparator()));
+        }
+    }
+
     @Override
     protected void init(final ProcessorInitializationContext context) {
         descriptors = new ArrayList<>();
@@ -71,6 +83,7 @@ public class IoticsSPARQLQuery extends AbstractProcessor {
 
         relationships = new HashSet<>();
         relationships.add(SUCCESS);
+        relationships.add(ORIGINAL);
         relationships.add(FAILURE);
         relationships = Collections.unmodifiableSet(relationships);
     }
@@ -93,15 +106,35 @@ public class IoticsSPARQLQuery extends AbstractProcessor {
         this.ioticsApi = ioticsHostService.getIoticsApi();
         this.sim = ioticsHostService.getSimpleIdentityManager();
 
-        final FlowFile flowFile = session.create();
+        final FlowFile ff = session.get();
 
+        if(ff == null) {
+            return;
+        }
 
+        AtomicReference<String> queryRef = new AtomicReference<>(context.getProperty(SPARQL_QUERY).getValue());
 
-        String query = context.getProperty(SPARQL_QUERY).getValue();
+        CountDownLatch latch1 = new CountDownLatch(1);
+        session.read(ff, in -> {
+            String content = readInputStream(in);
+            queryRef.set(content);
+            latch1.countDown();
+        });
+
+        try {
+            latch1.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ProcessException("interrupted while reading flow file", e);
+        }
+
+        session.transfer(ff, ORIGINAL);
+
         Scope scope = Scope.valueOf(context.getProperty(QUERY_SCOPE).getValue());
 
         CountDownLatch latch = new CountDownLatch(1);
-        query(query, scope).thenAccept(queryResult -> {
+        final FlowFile flowFile = session.create();
+        query(queryRef.get(), scope).thenAccept(queryResult -> {
             FlowFile updatedFlowFile = session.write(flowFile, out -> out.write(queryResult.getBytes()));
             session.transfer(updatedFlowFile, SUCCESS);
             latch.countDown();
