@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-smartrics.iotics.nifi.processors.IoticsJSONToTwin
+smartrics.iotics.nifi.processors.IoticsJSONLDToTwin
 smartrics.iotics.nifi.processors.IoticsSPARQLQuery
 smartrics.iotics.nifi.processors.IoticsFollower
 smartrics.iotics.nifi.processors.IoticsFinder
