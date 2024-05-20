@@ -17,16 +17,14 @@
 package smartrics.iotics.nifi.processors;
 
 import com.google.common.collect.Lists;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.gson.*;
 import com.google.protobuf.StringValue;
 import com.google.protobuf.Timestamp;
 import com.iotics.api.*;
 import io.grpc.stub.StreamObserver;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
+import org.apache.nifi.components.AllowableValue;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.*;
@@ -40,6 +38,7 @@ import smartrics.iotics.nifi.processors.tools.JsonToProperty;
 import smartrics.iotics.nifi.processors.tools.LocationValidator;
 import smartrics.iotics.nifi.services.IoticsHostService;
 
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
@@ -47,6 +46,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.nifi.processor.util.StandardValidators.NON_BLANK_VALIDATOR;
 import static org.apache.nifi.processor.util.StandardValidators.POSITIVE_INTEGER_VALIDATOR;
@@ -83,9 +83,19 @@ public class IoticsFinder extends AbstractProcessor {
     public static PropertyDescriptor PROPERTIES = new PropertyDescriptor
             .Builder().name("propertiesFilter")
             .displayName("Properties Filter")
-            .description("JSON array where each entry is a JSON map with 'key' and one of 'uri', 'stringLiteral', 'literal'. In case 'literal' is specified, an optional 'dataType' may be supplier")
+            .description("JSON array where each entry is a JSON map with 'key' and one of 'uri', 'stringLiteral', 'literal'. In case 'literal' is specified, an 'dataType' may be supplied, with value one of the valid xsd data types (int, boolean, anyURI, ...)")
             .required(false)
             .addValidator(NON_BLANK_VALIDATOR)
+            .build();
+    public static PropertyDescriptor QUERY_RESPONSE_TYPE = new PropertyDescriptor.Builder()
+            .name("queryResponseType")
+            .displayName("Query Response Type")
+            .description("query response type: " + ResponseType.FULL.name() + ", " + ResponseType.LOCATED + ", " + ResponseType.MINIMAL)
+            .allowableValues(Arrays.stream(ResponseType.values())
+                    .map(enumValue -> new AllowableValue(enumValue.name(), enumValue.name()))
+                    .toArray(AllowableValue[]::new))
+            .required(true)
+            .defaultValue(ResponseType.FULL.name())
             .build();
     private List<PropertyDescriptor> descriptors;
     private Set<Relationship> relationships;
@@ -96,6 +106,7 @@ public class IoticsFinder extends AbstractProcessor {
     protected void init(final ProcessorInitializationContext context) {
         descriptors = new ArrayList<>();
         descriptors.add(QUERY_SCOPE);
+        descriptors.add(QUERY_RESPONSE_TYPE);
         descriptors.add(EXPIRY_TIMEOUT);
         descriptors.add(LOCATION);
         descriptors.add(TEXT);
@@ -105,6 +116,7 @@ public class IoticsFinder extends AbstractProcessor {
 
         relationships = new HashSet<>();
         relationships.add(SUCCESS);
+        relationships.add(ORIGINAL);
         relationships.add(FAILURE);
         relationships = Collections.unmodifiableSet(relationships);
     }
@@ -127,36 +139,75 @@ public class IoticsFinder extends AbstractProcessor {
         this.ioticsApi = ioticsHostService.getIoticsApi();
         this.sim = ioticsHostService.getSimpleIdentityManager();
 
-        // TODO: get the search object from the flowfile
-        //  FlowFile flowFile = session.get();
-
         String location = context.getProperty(LOCATION).getValue();
-        JsonObject locationJson = null;
+        AtomicReference<JsonObject> locationJson = new AtomicReference<>();
         if (location != null) {
-            locationJson = JsonParser.parseString(location).getAsJsonObject();
+            locationJson.set(JsonParser.parseString(location).getAsJsonObject());
         }
-        String text = context.getProperty(TEXT).getValue();
-        Duration expTo = Duration.ofSeconds(context.getProperty(EXPIRY_TIMEOUT).asInteger());
+        AtomicReference<String> text = new AtomicReference<>(context.getProperty(TEXT).getValue());
+        AtomicReference<Duration> expTo = new AtomicReference<>(Duration.ofSeconds(context.getProperty(EXPIRY_TIMEOUT).asInteger()));
         String props = context.getProperty(PROPERTIES).getValue();
-        JsonArray propsArray = null;
+        AtomicReference<JsonArray> propsArray = new AtomicReference<>();
         if (props != null) {
-            propsArray = JsonParser.parseString(props).getAsJsonArray();
+            propsArray.set(JsonParser.parseString(props).getAsJsonArray());
         }
-        Scope scope = Scope.valueOf(context.getProperty(QUERY_SCOPE).getValue());
+        AtomicReference<Scope> scope = new AtomicReference<>(Scope.valueOf(context.getProperty(QUERY_SCOPE).getValue()));
+        AtomicReference<ResponseType> respType = new AtomicReference<>(ResponseType.valueOf(context.getProperty(QUERY_RESPONSE_TYPE).getValue()));
 
-        CountDownLatch latch = new CountDownLatch(1);
+        final CountDownLatch latch1 = new CountDownLatch(1);
+        FlowFile flowFile = session.get();
+        if (flowFile != null) {
+            session.read(flowFile, in -> {
+                JsonElement jsonElement = JsonParser.parseReader(new InputStreamReader(in));
+                JsonObject jsonObject = jsonElement.getAsJsonObject();
+                if (jsonObject.has("text")) {
+                    text.set(jsonObject.get("text").getAsString());
+                }
+                if (jsonObject.has("location")) {
+                    locationJson.set(jsonObject.get("location").getAsJsonObject());
+                }
+                if (jsonObject.has("expiryTimeout")) {
+                    expTo.set(Duration.ofSeconds(jsonObject.get("expiryTimeout").getAsInt()));
+                }
+                if (jsonObject.has("scope")) {
+                    scope.set(Scope.valueOf(jsonObject.get("scope").getAsString()));
+                }
+                if (jsonObject.has("responseType")) {
+                    respType.set(ResponseType.valueOf(jsonObject.get("responseType").getAsString()));
+                }
+                if (jsonObject.has("properties")) {
+                    propsArray.set(jsonObject.get("properties").getAsJsonArray());
+                }
+                latch1.countDown();
+            });
+        } else {
+            latch1.countDown();
+        }
+        try {
+            latch1.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ProcessException("Interrupted whilst reading Flow file", e);
+        }
+
+        if(flowFile != null) {
+            session.transfer(flowFile, ORIGINAL);
+        }
+
+        CountDownLatch latch2 = new CountDownLatch(1);
         try (ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1)) {
             // wait until the expiry timeout is done before terminating this trigger
-            SearchRequest searchRequest = makeSearchRequest(locationJson, text, propsArray, scope, expTo);
+            SearchRequest searchRequest = makeSearchRequest(locationJson.get(), text.get(), propsArray.get(), respType.get(), scope.get(), expTo.get());
 
             search(session, searchRequest);
 
-            scheduler.schedule(latch::countDown, expTo.toSeconds(), TimeUnit.SECONDS);
+            scheduler.schedule(latch2::countDown, expTo.get().toSeconds(), TimeUnit.SECONDS);
             try {
                 // latch unblocked by the scheduled task above
-                latch.await();
+                latch2.await();
             } catch (InterruptedException e) {
-                throw new ProcessException(e);
+                Thread.currentThread().interrupt();
+                throw new ProcessException("Interrupted whilst reading Flow file", e);
             }
             scheduler.shutdown();
         }
@@ -205,7 +256,7 @@ public class IoticsFinder extends AbstractProcessor {
         });
     }
 
-    private SearchRequest makeSearchRequest(JsonObject locationJson, String text, JsonArray propsArray, Scope scope, Duration exp) {
+    private SearchRequest makeSearchRequest(JsonObject locationJson, String text, JsonArray propsArray, ResponseType responseType, Scope scope, Duration exp) {
         SearchRequest.Payload.Filter.Builder filterBuilder = SearchRequest.Payload.Filter.newBuilder();
         if (locationJson != null) {
             filterBuilder.setLocation(GeoCircle.newBuilder()
@@ -226,7 +277,7 @@ public class IoticsFinder extends AbstractProcessor {
         }
 
         SearchRequest.Payload.Builder payloadBuilder = SearchRequest.Payload.newBuilder()
-                .setResponseType(ResponseType.FULL)
+                .setResponseType(responseType)
                 .setExpiryTimeout(Timestamp.newBuilder().setSeconds(exp.toSeconds()).build())
                 .setFilter(filterBuilder);
 
