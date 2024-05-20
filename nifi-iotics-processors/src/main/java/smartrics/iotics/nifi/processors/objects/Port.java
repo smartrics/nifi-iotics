@@ -49,7 +49,7 @@ public class Port {
         return payload;
     }
 
-    public void updatePayload(Map<String, Object> newPayload) {
+    public synchronized void updatePayload(Map<String, Object> newPayload) {
         if (payload == null) {
             payload = new ConcurrentHashMap<>();
         } else {

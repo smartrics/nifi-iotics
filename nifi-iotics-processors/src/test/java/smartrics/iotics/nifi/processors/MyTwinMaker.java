@@ -109,12 +109,6 @@ public class MyTwinMaker extends AbstractTwin implements MappableMaker, Mappable
     }
 
     @Override
-    public ListenableFuture<ShareFeedDataResponse> share(ShareFeedDataRequest request) {
-        System.out.println(request);
-        return MappablePublisher.super.share(request);
-    }
-
-    @Override
     public List<ShareFeedDataRequest> getShareFeedDataRequest() {
         return this.twin.feeds().stream().filter(p -> p.payloadAsJson().isPresent()).map(port -> ShareFeedDataRequest.newBuilder()
                 .setHeaders(Builders.newHeadersBuilder(getAgentIdentity()))

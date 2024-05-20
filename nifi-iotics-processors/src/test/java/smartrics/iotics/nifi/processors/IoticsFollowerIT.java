@@ -7,20 +7,13 @@ import org.apache.nifi.util.TestRunners;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import smartrics.iotics.identity.Identity;
-import smartrics.iotics.nifi.processors.objects.MyTwin;
 import smartrics.iotics.nifi.services.BasicIoticsHostService;
 
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Function;
 
+import static smartrics.iotics.nifi.processors.Constants.SUCCESS;
 import static smartrics.iotics.nifi.processors.IoticsControllerServiceFactory.injectIoticsHostService;
 import static smartrics.iotics.nifi.processors.MyTwinMaker.makeMyTwin;
 
@@ -48,53 +41,40 @@ public class IoticsFollowerIT {
         executor = Executors.newFixedThreadPool(10);
         myTwinMaker = makeMyTwin(service);
         stop = new AtomicBoolean(false);
+        myTwinMaker.updatePayload();
         executor.submit(() -> {
-            int i = 0;
             while(!stop.get()) {
-                i++;
-                delay(1000);
+                delay(100);
                 myTwinMaker.updatePayload();
-                CompletableFuture<Void> fut = myTwinMaker.share();
-                int finalI = i;
-                fut.thenAccept(c -> System.out.println("completed share " + finalI))
-                        .exceptionally(t -> {
-                            t.printStackTrace();
-                            return null;
-                        });
+                myTwinMaker.share();
             }
         });
-
     }
 
-
-//    @Test
+    @Test
     public void testProcessor() throws Exception {
         String json = myTwinMaker.twin().toJson();
         testRunner.enqueue(json);
         int EL = 10;
         CountDownLatch latch = new CountDownLatch(EL);
-        System.out.println("here 1");
         executor.submit(() -> {
-            System.out.println("here 2");
             testRunner.run(1);
             //assert the input Q is empty and the flowfile is processed
             testRunner.assertQueueEmpty();
         });
         executor.submit(() -> {
-            System.out.println("here 3");
             while(!stop.get()) {
-                List<MockFlowFile> results = testRunner.getFlowFilesForRelationship(IoticsFollower.RECEIVED_DATA);
-                System.out.println("here 4");
+                List<MockFlowFile> results = testRunner.getFlowFilesForRelationship(SUCCESS);
                 if(!results.isEmpty()){
-                    MockFlowFile outputFlowfile = results.getFirst();
-                    String outputFlowfileContent = new String(testRunner.getContentAsByteArray(outputFlowfile));
-                    System.out.println(latch.getCount() + ") " + outputFlowfileContent);
+                    results.forEach(action -> {
+                        String outputFlowfileContent = new String(testRunner.getContentAsByteArray(action));
+                        System.out.println("received " + " / " + results.size() + " / " + latch.getCount() + ": " + outputFlowfileContent);
+                        latch.countDown();
+                    });
                     latch.countDown();
-                    if (latch.getCount() == 0) {
-                        break;
-                    }
-                } else {
-                    System.out.println("here 5");
+                }
+                if (latch.getCount() == 0) {
+                    break;
                 }
             }
             while(stop.get() && latch.getCount()>0) {

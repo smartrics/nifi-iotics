@@ -27,8 +27,11 @@ import com.iotics.api.*;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
+import org.apache.nifi.annotation.behavior.WritesAttribute;
+import org.apache.nifi.annotation.behavior.WritesAttributes;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
+import org.apache.nifi.annotation.lifecycle.OnStopped;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.*;
@@ -44,9 +47,12 @@ import smartrics.iotics.nifi.processors.objects.Port;
 import smartrics.iotics.nifi.services.IoticsHostService;
 
 import java.io.InputStreamReader;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import static org.apache.nifi.processor.util.StandardValidators.NON_EMPTY_VALIDATOR;
@@ -54,9 +60,17 @@ import static smartrics.iotics.nifi.processors.Constants.*;
 
 @Tags({"IOTICS", "DIGITAL TWIN", "FIND", "BIND", "FOLLOWER"})
 @CapabilityDescription("""
-        Find and Bind to feeds. The processor runs an IOTICS search and, of the twins it finds, it follows all the feeds.
-        Future enhancements: batch and batch sizes to improve performances
-        """)
+Find and Bind to feeds. The processor runs an IOTICS search and, of the twins it finds, it follows all the feeds.
+Future enhancements: batch and batch sizes to improve performances
+""")
+@WritesAttributes({
+        @WritesAttribute(attribute = "followerTwinDid", description = "this follower's did"),
+        @WritesAttribute(attribute = "hostDid", description = "the host where the share came from"),
+        @WritesAttribute(attribute = "twinDid", description = "the twin where the share came from"),
+        @WritesAttribute(attribute = "feedId", description = "the feed ID"),
+        @WritesAttribute(attribute = "mimeType", description = "the content of the feed share"),
+        @WritesAttribute(attribute = "occurredAt", description = "when the share occurredAt"),
+})
 public class IoticsFollower extends AbstractProcessor {
     public static PropertyDescriptor FOLLOWER_LABEL = new PropertyDescriptor
             .Builder().name("followerTwinLabel")
@@ -89,14 +103,6 @@ public class IoticsFollower extends AbstractProcessor {
             .required(true)
             .addValidator(NON_EMPTY_VALIDATOR)
             .build();
-    public static Relationship RECEIVED_DATA = new Relationship.Builder()
-            .name("receivedData")
-            .description("Data received from feed share")
-            .build();
-    public static Relationship RECEIVED_DATA_COMPLETE = new Relationship.Builder()
-            .name("receivedDataComplete")
-            .description("Data received from feed share has completed. No more data will be received")
-            .build();
 
     private final EventBus eventBus = new EventBus();
     private List<PropertyDescriptor> descriptors;
@@ -118,8 +124,7 @@ public class IoticsFollower extends AbstractProcessor {
 
         relationships = new HashSet<>();
         relationships.add(SUCCESS);
-        relationships.add(RECEIVED_DATA);
-        relationships.add(RECEIVED_DATA_COMPLETE);
+        relationships.add(ORIGINAL);
         relationships.add(FAILURE);
         relationships = Collections.unmodifiableSet(relationships);
 
@@ -138,7 +143,11 @@ public class IoticsFollower extends AbstractProcessor {
     }
 
     @Override
-    public void onTrigger(final ProcessContext context, final ProcessSession session) {
+    public void onTrigger(final ProcessContext context, final ProcessSession session) throws ProcessException {
+        FlowFile flowFile = session.get();
+        if (flowFile == null) {
+            return;
+        }
         IoticsHostService ioticsHostService =
                 context.getProperty(IOTICS_HOST_SERVICE).asControllerService(IoticsHostService.class);
 
@@ -146,6 +155,39 @@ public class IoticsFollower extends AbstractProcessor {
         this.sim = ioticsHostService.getSimpleIdentityManager();
         this.executor = ioticsHostService.getExecutor();
 
+        AtomicReference<MyTwin> myTwinRef = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+        session.read(flowFile, in -> {
+            Gson gson = new Gson();
+            try {
+                MyTwin myTwin = gson.fromJson(new InputStreamReader(in), MyTwin.class);
+                myTwinRef.set(myTwin);
+            } catch (Exception e) {
+                getLogger().error("Failed to read data from FlowFile content", e);
+            }
+            latch.countDown();
+        });
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            session.transfer(flowFile, FAILURE);
+            getLogger().error("interrupted while waiting for reading flow file");
+            return;
+        }
+        if (myTwinRef.get() == null) {
+            getLogger().error("follow twin not available from flow file");
+            session.transfer(flowFile, FAILURE);
+            return;
+        }
+        getLogger().info("follow twin available from flow file: " + myTwinRef.get());
+
+        Consumer<String> consumer = followerDid ->
+                eventBus.post(new FollowEvent(followerDid, myTwinRef.get(), context, session));
+        makeFollowerTwin(context, consumer);
+    }
+
+    private void makeFollowerTwin(ProcessContext context, Consumer<String> onSuccess) {
         String label = context.getProperty(FOLLOWER_LABEL).getValue();
         String comment = context.getProperty(FOLLOWER_COMMENT).getValue();
         String type = context.getProperty(FOLLOWER_CLASSIFIER).getValue();
@@ -154,14 +196,12 @@ public class IoticsFollower extends AbstractProcessor {
         FollowerTwin.FollowerModel model = new FollowerTwin.FollowerModel(label, comment, type);
         Identity ide = this.sim.newTwinIdentityWithControlDelegation(uniqueKeyName, "#deleg-" + uniqueKeyName.hashCode());
         FollowerTwin twin = new FollowerTwin(model, ioticsApi, sim, ide);
-
-        CountDownLatch latch = new CountDownLatch(1);
         Futures.addCallback(twin.upsert(), new FutureCallback<>() {
             @Override
             public void onSuccess(UpsertTwinResponse result) {
                 String followerDid = result.getPayload().getTwinId().getId();
                 getLogger().info("Follower twin created with did=" + followerDid);
-                eventBus.post(new FollowEvent(followerDid, session.get(), session));
+                onSuccess.accept(followerDid);
             }
 
             @Override
@@ -169,62 +209,67 @@ public class IoticsFollower extends AbstractProcessor {
                 getLogger().warn("Failed to make follower twin", t);
             }
         }, executor);
-
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            throw new ProcessException(e);
-        }
-
     }
+
+    @OnStopped
+    public void onStopped() {
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(1, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+        ioticsApi.stop(Duration.ofSeconds(5));
+    }
+
 
     private void follow(FollowEvent event) {
-        FlowFile flowFile = event.flowFile();
-        if (flowFile == null) {
-            getLogger().warn("no flowfile found - not following");
-            return;
-        }
-
-        String followerDid = event.followerDid();
-        ProcessSession session = event.session();
-
-        session.read(flowFile, in -> {
-            Gson gson = new Gson();
-            try {
-                MyTwin myTwin = gson.fromJson(new InputStreamReader(in), MyTwin.class);
-
-                Consumer<FetchInterestResponse> consumer = fetchInterestResponse -> {
-                    FlowFile ff = session.create(session.get());
-                    try {
-                        FeedID followedFeedId = fetchInterestResponse.getPayload().getInterest().getFollowedFeedId();
-                        session.putAttribute(ff, "followerTwinDid", followerDid);
-                        session.putAttribute(ff, "hostDid", followedFeedId.getHostId());
-                        session.putAttribute(ff, "twinDid", followedFeedId.getTwinId());
-                        session.putAttribute(ff, "feedId", followedFeedId.getId());
-                        FeedData feedData = fetchInterestResponse.getPayload().getFeedData();
-                        session.putAttribute(ff, "mimeType", feedData.getMime());
-                        session.putAttribute(ff, "occurredAt", feedData.getOccurredAt().toString());
-                        ByteString bytes = feedData.getData();
-                        session.write(ff, out -> out.write(bytes.toByteArray()));
-                        session.transfer(ff, RECEIVED_DATA);
-                    } catch (Exception e) {
-                        session.transfer(ff, FAILURE);
-                    }
-                };
-                myTwin.feeds().forEach(port -> {
-                    doFollow(followerDid, myTwin.hostDid(), myTwin.id(), session, port, consumer);
-                });
-            } catch (Exception ex) {
-                getLogger().error("Failed to read json string.", ex);
-                throw new ProcessException(ex.getMessage(), ex);
-            }
-
-        });
+        event.twin().feeds().forEach(port -> eventBus.post(new FollowFeedEvent(event, port)));
     }
 
-    private void doFollow(String followerDid, String hostId, String twinId, ProcessSession session, Port feedDetails, Consumer<FetchInterestResponse> consumer) {
-        FetchInterestRequest request = newFetchInterestRequest(followerDid, hostId, twinId, feedDetails);
-        getLogger().info("FOLLOW {}/{}/{}", hostId, twinId, feedDetails.id());
+    private Consumer<FetchInterestResponse> feedDataConsumer(String followerDid, ProcessContext context, ProcessSession session) {
+        return fetchInterestResponse -> {
+            FetchInterestResponse.Payload payload = fetchInterestResponse.getPayload();
+            FeedID followedFeedId = payload.getInterest().getFollowedFeedId();
+            FeedData feedData = payload.getFeedData();
+            ByteString data = feedData.getData();
+            FlowFile ff = session.create();
+            try {
+                session.write(ff, out -> out.write(data.toByteArray()));
+                session.putAttribute(ff, "followerTwinDid", followerDid);
+                session.putAttribute(ff, "hostDid", followedFeedId.getHostId());
+                session.putAttribute(ff, "twinDid", followedFeedId.getTwinId());
+                session.putAttribute(ff, "feedId", followedFeedId.getId());
+                session.putAttribute(ff, "mimeType", feedData.getMime());
+                session.putAttribute(ff, "occurredAt", feedData.getOccurredAt().toString());
+                session.transfer(ff, SUCCESS);
+                session.commitAsync(() -> getLogger().info("successfully transferred FlowFile"),
+                        throwable -> getLogger().error("failed to transfer FlowFile", throwable));
+            } catch (Exception e) {
+                getLogger().error("exception when creating session", e);
+                session.transfer(ff, FAILURE);
+            }
+            context.yield();
+        };
+    }
+
+    private void follow(FollowFeedEvent ev) {
+
+        String followerDid = ev.followEvent().followerDid();
+        MyTwin twin = ev.followEvent().twin();
+        String twinDid = twin.id();
+        String feedId = ev.port().id();
+        ProcessSession session = ev.followEvent().session();
+        ProcessContext context = ev.followEvent().context();
+
+        FetchInterestRequest request = newFetchInterestRequest(followerDid, twin, ev.port());
+
+        getLogger().info("FOLLOW {}/{}", twinDid, feedId);
+        Consumer<FetchInterestResponse> consumer = feedDataConsumer(followerDid, context, session);
+        session.transfer(session.get(), ORIGINAL);
         this.ioticsApi.interestAPI().fetchInterests(request, new StreamObserver<>() {
             @Override
             public void onNext(FetchInterestResponse fetchInterestResponse) {
@@ -233,17 +278,16 @@ public class IoticsFollower extends AbstractProcessor {
 
             @Override
             public void onError(Throwable throwable) {
-                // TODO: trigger re-follow on token expired
-                getLogger().error("FOLLOW ERROR {}/{}/{}", hostId, twinId, feedDetails.id(), throwable);
-                MyFlowFileFilter filter = new MyFlowFileFilter(hostId, twinId, feedDetails.id());
+                getLogger().error("FOLLOW ERROR {}/{}", twinDid, feedId, throwable);
+                MyFlowFileFilter filter = new MyFlowFileFilter(ev);
                 List<FlowFile> found = session.get(filter);
                 if (throwable instanceof StatusRuntimeException
                         && ((StatusRuntimeException) throwable).getStatus().getCode() == Status.Code.UNAUTHENTICATED
                 ) {
                     // TODO seems the ff isn't found in unittest - check live deployment
                     if (!found.isEmpty()) {
-                        getLogger().info("Follower twin following again did=" + followerDid);
-                        eventBus.post(new FollowEvent(followerDid, found.getFirst(), session));
+                        getLogger().info("RE-FOLLOW {}/{}", twinDid, feedId);
+                        eventBus.post(ev.followEvent);
                     }
                 } else {
                     found.forEach(flowFile -> session.transfer(flowFile, FAILURE));
@@ -252,26 +296,22 @@ public class IoticsFollower extends AbstractProcessor {
 
             @Override
             public void onCompleted() {
-                getLogger().info("FOLLOW COMPLETE {}/{}/{}", hostId, twinId, feedDetails.id());
-                MyFlowFileFilter filter = new MyFlowFileFilter(hostId, twinId, feedDetails.id());
-                // TODO seems the ff isn't found in unittest - check live deployment
-                List<FlowFile> found = session.get(filter);
-                found.forEach(flowFile -> session.transfer(flowFile, RECEIVED_DATA_COMPLETE));
+                getLogger().info("FOLLOW COMPLETE {}/{}", twinDid, feedId);
             }
         });
     }
 
     @NotNull
-    private FetchInterestRequest newFetchInterestRequest(String followerDid, String hostId, String twinId, Port feedDetails) {
+    private FetchInterestRequest newFetchInterestRequest(String followerDid, MyTwin twin, Port port) {
         return FetchInterestRequest.newBuilder()
                 .setHeaders(Builders.newHeadersBuilder(sim.agentIdentity()))
                 .setFetchLastStored(BoolValue.newBuilder().setValue(true).build())
                 .setArgs(FetchInterestRequest.Arguments.newBuilder()
                         .setInterest(Interest.newBuilder()
                                 .setFollowedFeedId(FeedID.newBuilder()
-                                        .setHostId(hostId)
-                                        .setTwinId(twinId)
-                                        .setId(feedDetails.id()).build())
+                                        .setHostId(twin.hostDid())
+                                        .setTwinId(twin.id())
+                                        .setId(port.id()).build())
                                 .setFollowerTwinId(TwinID.newBuilder()
                                         .setId(followerDid)
                                         .build())
@@ -280,7 +320,7 @@ public class IoticsFollower extends AbstractProcessor {
                 .build();
     }
 
-    private record MyFlowFileFilter(String myHostDid, String myTwinDid, String myFeedId) implements FlowFileFilter {
+    private record MyFlowFileFilter(FollowFeedEvent ev) implements FlowFileFilter {
 
         @Override
         public FlowFileFilterResult filter(FlowFile flowFile) {
@@ -288,9 +328,9 @@ public class IoticsFollower extends AbstractProcessor {
             String twinDid = flowFile.getAttribute("twinDid");
             String feedId = flowFile.getAttribute("feedId");
 
-            if (hostDid != null && hostDid.equals(myHostDid)) {
-                if (twinDid != null && twinDid.equals(myTwinDid)) {
-                    if (feedId != null && feedId.equals(myFeedId)) {
+            if (hostDid != null && hostDid.equals(ev.followEvent().twin().hostDid())) {
+                if (twinDid != null && twinDid.equals(ev.followEvent().twin().id())) {
+                    if (feedId != null && feedId.equals(ev.port().id())) {
                         return FlowFileFilter.FlowFileFilterResult.ACCEPT_AND_CONTINUE;
                     }
                 }
@@ -299,13 +339,21 @@ public class IoticsFollower extends AbstractProcessor {
         }
     }
 
-    public record FollowEvent(String followerDid, FlowFile flowFile, ProcessSession session) {
+    public record FollowEvent(String followerDid, MyTwin twin, ProcessContext context, ProcessSession session) {
+    }
+
+    public record FollowFeedEvent(FollowEvent followEvent, Port port) {
     }
 
     public class FollowEventListener {
 
         @Subscribe
         public void onFollowEvent(FollowEvent event) {
+            follow(event);
+        }
+
+        @Subscribe
+        public void onFollowEvent(FollowFeedEvent event) {
             follow(event);
         }
     }
