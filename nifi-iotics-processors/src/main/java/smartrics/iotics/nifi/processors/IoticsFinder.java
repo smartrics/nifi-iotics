@@ -156,33 +156,34 @@ public class IoticsFinder extends AbstractProcessor {
 
         final CountDownLatch latch1 = new CountDownLatch(1);
         FlowFile flowFile = session.get();
-        if (flowFile != null) {
-            session.read(flowFile, in -> {
-                JsonElement jsonElement = JsonParser.parseReader(new InputStreamReader(in));
-                JsonObject jsonObject = jsonElement.getAsJsonObject();
-                if (jsonObject.has("text")) {
-                    text.set(jsonObject.get("text").getAsString());
-                }
-                if (jsonObject.has("location")) {
-                    locationJson.set(jsonObject.get("location").getAsJsonObject());
-                }
-                if (jsonObject.has("expiryTimeout")) {
-                    expTo.set(Duration.ofSeconds(jsonObject.get("expiryTimeout").getAsInt()));
-                }
-                if (jsonObject.has("scope")) {
-                    scope.set(Scope.valueOf(jsonObject.get("scope").getAsString()));
-                }
-                if (jsonObject.has("responseType")) {
-                    respType.set(ResponseType.valueOf(jsonObject.get("responseType").getAsString()));
-                }
-                if (jsonObject.has("properties")) {
-                    propsArray.set(jsonObject.get("properties").getAsJsonArray());
-                }
-                latch1.countDown();
-            });
-        } else {
-            latch1.countDown();
+        if(flowFile == null) {
+            return;
         }
+
+        session.read(flowFile, in -> {
+            JsonElement jsonElement = JsonParser.parseReader(new InputStreamReader(in));
+            JsonObject jsonObject = jsonElement.getAsJsonObject();
+            if (jsonObject.has("text")) {
+                text.set(jsonObject.get("text").getAsString());
+            }
+            if (jsonObject.has("location")) {
+                locationJson.set(jsonObject.get("location").getAsJsonObject());
+            }
+            if (jsonObject.has("expiryTimeout")) {
+                expTo.set(Duration.ofSeconds(jsonObject.get("expiryTimeout").getAsInt()));
+            }
+            if (jsonObject.has("scope")) {
+                scope.set(Scope.valueOf(jsonObject.get("scope").getAsString()));
+            }
+            if (jsonObject.has("responseType")) {
+                respType.set(ResponseType.valueOf(jsonObject.get("responseType").getAsString()));
+            }
+            if (jsonObject.has("properties")) {
+                propsArray.set(jsonObject.get("properties").getAsJsonArray());
+            }
+            latch1.countDown();
+        });
+
         try {
             latch1.await();
         } catch (InterruptedException e) {
@@ -190,9 +191,7 @@ public class IoticsFinder extends AbstractProcessor {
             throw new ProcessException("Interrupted whilst reading Flow file", e);
         }
 
-        if(flowFile != null) {
-            session.transfer(flowFile, ORIGINAL);
-        }
+        session.transfer(flowFile, ORIGINAL);
 
         CountDownLatch latch2 = new CountDownLatch(1);
         try (ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1)) {
@@ -217,11 +216,9 @@ public class IoticsFinder extends AbstractProcessor {
         ioticsApi.searchAPI().synchronousSearch(searchRequest, new StreamObserver<>() {
             @Override
             public void onNext(SearchResponse searchResponse) {
-                getLogger().info("Found twins [n={}]", searchResponse.getPayload().getTwinsList().size());
                 // follow all feeds of all twins found
                 ArrayList<SearchResponse.TwinDetails> list = Lists.newArrayList(searchResponse.getPayload().getTwinsList());
                 if (list.isEmpty()) {
-                    getLogger().info("No twins found matching your filters [filter={}]", searchRequest.getPayload().getFilter());
                     return;
                 }
                 MyTwinList to = new MyTwinList(searchResponse);

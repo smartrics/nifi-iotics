@@ -62,7 +62,11 @@ public class IoticsFinderIT {
     }
 
     @Test
-    public void testProcessorNoInputFlow() {
+    public void testProcessorEmptyInputFlow() {
+        testRunner.enqueue("""
+                {
+                }
+                """);
         run();
     }
 

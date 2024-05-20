@@ -30,7 +30,7 @@ public class IoticsSPARQLQueryIT {
     }
 
     @Test
-    public void testProcessorWithInput() throws IOException {
+    public void testProcessorWithInput() {
         testRunner.enqueue("""
                 PREFIX schema: <http://schema.org/>
                 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -40,13 +40,6 @@ public class IoticsSPARQLQueryIT {
                   ?car a schema:Car .
                 }
                 """);
-        run();
-    }
-
-    private void run() throws IOException {
-        String content = Files.readString(Path.of("src\\test\\resources\\car_query.sparql"));
-        testRunner.setProperty(IoticsSPARQLQuery.SPARQL_QUERY, content);
-
         testRunner.run(1);
         //assert the input Q is empty and the flowfile is processed
         testRunner.assertQueueEmpty();

@@ -29,7 +29,6 @@ import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.*;
 import org.apache.nifi.processor.exception.ProcessException;
-import org.apache.nifi.processor.util.StandardValidators;
 import smartrics.iotics.host.Builders;
 import smartrics.iotics.host.IoticsApi;
 import smartrics.iotics.identity.SimpleIdentityManager;
@@ -50,17 +49,11 @@ import static smartrics.iotics.nifi.processors.Constants.*;
 
 @Tags({"IOTICS", "SPARQL", "QUERY"})
 @CapabilityDescription("""
-        Runs a SPARQL query and returns the output to the fileflow.
+        Runs a SPARQL query and returns the output to the flow file.
         """)
 @ReadsAttribute(attribute = "sql.query", description = "The SQL select query to execute.")
 public class IoticsSPARQLQuery extends AbstractProcessor {
-    public static PropertyDescriptor SPARQL_QUERY = new PropertyDescriptor
-            .Builder().name("sparqlQuery")
-            .displayName("SPARQL query")
-            .description("the query that, when executed, it will find the twin and feed to follow")
-            .required(true)
-            .addValidator(StandardValidators.NON_BLANK_VALIDATOR)
-            .build();
+
     private List<PropertyDescriptor> descriptors;
 
     private Set<Relationship> relationships;
@@ -77,7 +70,6 @@ public class IoticsSPARQLQuery extends AbstractProcessor {
     protected void init(final ProcessorInitializationContext context) {
         descriptors = new ArrayList<>();
         descriptors.add(QUERY_SCOPE);
-        descriptors.add(SPARQL_QUERY);
         descriptors.add(IOTICS_HOST_SERVICE);
         descriptors = Collections.unmodifiableList(descriptors);
 
@@ -108,11 +100,11 @@ public class IoticsSPARQLQuery extends AbstractProcessor {
 
         final FlowFile ff = session.get();
 
-        if(ff == null) {
+        if (ff == null) {
             return;
         }
 
-        AtomicReference<String> queryRef = new AtomicReference<>(context.getProperty(SPARQL_QUERY).getValue());
+        AtomicReference<String> queryRef = new AtomicReference<>();
 
         CountDownLatch latch1 = new CountDownLatch(1);
         session.read(ff, in -> {
