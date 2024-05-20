@@ -94,6 +94,9 @@ public class IoticsSPARQLQuery extends AbstractProcessor {
         this.sim = ioticsHostService.getSimpleIdentityManager();
 
         final FlowFile flowFile = session.create();
+
+
+
         String query = context.getProperty(SPARQL_QUERY).getValue();
         Scope scope = Scope.valueOf(context.getProperty(QUERY_SCOPE).getValue());
 
