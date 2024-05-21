@@ -42,7 +42,7 @@ import smartrics.iotics.host.IoticsApi;
 import smartrics.iotics.identity.Identity;
 import smartrics.iotics.identity.SimpleIdentityManager;
 import smartrics.iotics.nifi.processors.objects.FollowerTwin;
-import smartrics.iotics.nifi.processors.objects.MyTwin;
+import smartrics.iotics.nifi.processors.objects.MyTwinModel;
 import smartrics.iotics.nifi.processors.objects.Port;
 import smartrics.iotics.nifi.services.IoticsHostService;
 
@@ -155,12 +155,12 @@ public class IoticsFollower extends AbstractProcessor {
         this.sim = ioticsHostService.getSimpleIdentityManager();
         this.executor = ioticsHostService.getExecutor();
 
-        AtomicReference<MyTwin> myTwinRef = new AtomicReference<>();
+        AtomicReference<MyTwinModel> myTwinRef = new AtomicReference<>();
         CountDownLatch latch = new CountDownLatch(1);
         session.read(flowFile, in -> {
             Gson gson = new Gson();
             try {
-                MyTwin myTwin = gson.fromJson(new InputStreamReader(in), MyTwin.class);
+                MyTwinModel myTwin = gson.fromJson(new InputStreamReader(in), MyTwinModel.class);
                 myTwinRef.set(myTwin);
             } catch (Exception e) {
                 getLogger().error("Failed to read data from FlowFile content", e);
@@ -259,7 +259,7 @@ public class IoticsFollower extends AbstractProcessor {
     private void follow(FollowFeedEvent ev) {
 
         String followerDid = ev.followEvent().followerDid();
-        MyTwin twin = ev.followEvent().twin();
+        MyTwinModel twin = ev.followEvent().twin();
         String twinDid = twin.id();
         String feedId = ev.port().id();
         ProcessSession session = ev.followEvent().session();
@@ -302,7 +302,7 @@ public class IoticsFollower extends AbstractProcessor {
     }
 
     @NotNull
-    private FetchInterestRequest newFetchInterestRequest(String followerDid, MyTwin twin, Port port) {
+    private FetchInterestRequest newFetchInterestRequest(String followerDid, MyTwinModel twin, Port port) {
         return FetchInterestRequest.newBuilder()
                 .setHeaders(Builders.newHeadersBuilder(sim.agentIdentity()))
                 .setFetchLastStored(BoolValue.newBuilder().setValue(true).build())
@@ -339,7 +339,7 @@ public class IoticsFollower extends AbstractProcessor {
         }
     }
 
-    public record FollowEvent(String followerDid, MyTwin twin, ProcessContext context, ProcessSession session) {
+    public record FollowEvent(String followerDid, MyTwinModel twin, ProcessContext context, ProcessSession session) {
     }
 
     public record FollowFeedEvent(FollowEvent followEvent, Port port) {

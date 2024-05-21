@@ -32,8 +32,8 @@ import org.apache.nifi.processor.exception.ProcessException;
 import smartrics.iotics.host.Builders;
 import smartrics.iotics.host.IoticsApi;
 import smartrics.iotics.identity.SimpleIdentityManager;
-import smartrics.iotics.nifi.processors.objects.MyTwin;
-import smartrics.iotics.nifi.processors.objects.MyTwinList;
+import smartrics.iotics.nifi.processors.objects.MyTwinModel;
+import smartrics.iotics.nifi.processors.objects.MyTwinModelList;
 import smartrics.iotics.nifi.processors.tools.JsonToProperty;
 import smartrics.iotics.nifi.processors.tools.LocationValidator;
 import smartrics.iotics.nifi.services.IoticsHostService;
@@ -57,7 +57,6 @@ import static smartrics.iotics.nifi.processors.Constants.*;
         Processor for IOTICS search
         """)
 public class IoticsFinder extends AbstractProcessor {
-
 
     public static PropertyDescriptor EXPIRY_TIMEOUT = new PropertyDescriptor
             .Builder().name("expiryTimeoutSec")
@@ -221,13 +220,13 @@ public class IoticsFinder extends AbstractProcessor {
                 if (list.isEmpty()) {
                     return;
                 }
-                MyTwinList to = new MyTwinList(searchResponse);
+                MyTwinModelList to = new MyTwinModelList(searchResponse);
                 to.twins().forEach(twin -> {
                     try {
                         Gson gson = new Gson();
                         FlowFile flowFile = session.create(session.get());
                         try {
-                            String json = gson.toJson(twin, MyTwin.class);
+                            String json = gson.toJson(twin, MyTwinModel.class);
                             session.write(flowFile, out -> out.write(json.getBytes(StandardCharsets.UTF_8)));
                             session.transfer(flowFile, SUCCESS);
                         } catch (Exception e) {

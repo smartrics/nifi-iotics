@@ -25,12 +25,12 @@ public class Port {
 
     public Port(SearchResponse.FeedDetails feedDetails) {
         this(feedDetails.getFeedId().getId(),
-                feedDetails.getPropertiesList().stream().map(MyProperty::Factory).toList(), feedDetails.getStoreLast(), Map.of());
+                feedDetails.getPropertiesList().stream().map(MyProperty::factory).toList(), feedDetails.getStoreLast(), Map.of());
     }
 
     public Port(SearchResponse.InputDetails inputDetails) {
         this(inputDetails.getInputId().getId(),
-                inputDetails.getPropertiesList().stream().map(MyProperty::Factory).toList(), false, Map.of());
+                inputDetails.getPropertiesList().stream().map(MyProperty::factory).toList(), false, Map.of());
     }
 
     public String id() {

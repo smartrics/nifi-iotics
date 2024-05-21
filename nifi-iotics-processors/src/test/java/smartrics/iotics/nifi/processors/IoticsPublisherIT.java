@@ -30,7 +30,7 @@ public class IoticsPublisherIT {
         testRunner.run(1);
         //assert the input Q is empty and the flowfile is processed
         testRunner.assertQueueEmpty();
-        List<MockFlowFile> results = testRunner.getFlowFilesForRelationship(Constants.SUCCESS);
+        List<MockFlowFile> results = testRunner.getFlowFilesForRelationship(Constants.ORIGINAL);
 
         if (!results.isEmpty()) {
             results.forEach(mockFlowFile -> {

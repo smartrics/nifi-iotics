@@ -13,7 +13,7 @@ import smartrics.iotics.host.IoticsApi;
 import smartrics.iotics.identity.Identity;
 import smartrics.iotics.identity.SimpleIdentityManager;
 import smartrics.iotics.nifi.processors.objects.MyProperty;
-import smartrics.iotics.nifi.processors.objects.MyTwin;
+import smartrics.iotics.nifi.processors.objects.MyTwinModel;
 import smartrics.iotics.nifi.services.BasicIoticsHostService;
 
 import java.nio.charset.StandardCharsets;
@@ -26,9 +26,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class MyTwinMaker extends AbstractTwin implements MappableMaker, MappablePublisher, Mapper {
-    private final MyTwin twin;
+    private final MyTwinModel twin;
 
-    public MyTwinMaker(MyTwin twin, IoticsApi ioticsApi, SimpleIdentityManager sim, Identity myIdentity) {
+    public MyTwinMaker(MyTwinModel twin, IoticsApi ioticsApi, SimpleIdentityManager sim, Identity myIdentity) {
         super(ioticsApi, sim, myIdentity);
         this.twin = twin;
     }
@@ -37,7 +37,7 @@ public class MyTwinMaker extends AbstractTwin implements MappableMaker, Mappable
         CountDownLatch latch = new CountDownLatch(1);
         String content = Files.readString(Path.of("src\\test\\resources\\twin_with_feed.json"));
         Gson gson = new Gson();
-        MyTwin myTwin = gson.fromJson(content, MyTwin.class);
+        MyTwinModel myTwin = gson.fromJson(content, MyTwinModel.class);
         Identity twinIdentity = service.getSimpleIdentityManager().newTwinIdentityWithControlDelegation(myTwin.id(), "#master");
         MyTwinMaker myTwinMaker = new MyTwinMaker(myTwin, service.getIoticsApi(), service.getSimpleIdentityManager(), twinIdentity);
         ListenableFuture<UpsertTwinResponse> res = myTwinMaker.upsert();
@@ -56,11 +56,11 @@ public class MyTwinMaker extends AbstractTwin implements MappableMaker, Mappable
         if (twinID == null) {
             throw new IllegalStateException("operation not completed - twinID is null");
         }
-        MyTwin myTwinWithId = new MyTwin(twinID.getHostId(), twinID.getId(), myTwin.properties(), myTwin.feeds(), myTwin.inputs());
+        MyTwinModel myTwinWithId = new MyTwinModel(twinID.getHostId(), twinID.getId(), myTwin.properties(), myTwin.feeds(), myTwin.inputs());
         return new MyTwinMaker(myTwinWithId, service.getIoticsApi(), service.getSimpleIdentityManager(), twinIdentity);
     }
 
-    public MyTwin twin() {
+    public MyTwinModel twin() {
         return twin;
     }
 

@@ -43,7 +43,7 @@ import smartrics.iotics.host.Builders;
 import smartrics.iotics.host.IoticsApi;
 import smartrics.iotics.identity.SimpleIdentityManager;
 import smartrics.iotics.nifi.processors.objects.MyProperty;
-import smartrics.iotics.nifi.processors.objects.MyTwin;
+import smartrics.iotics.nifi.processors.objects.MyTwinModel;
 import smartrics.iotics.nifi.processors.objects.Port;
 import smartrics.iotics.nifi.services.IoticsHostService;
 
@@ -79,7 +79,7 @@ public class IoticsPublisher extends AbstractProcessor {
     }
 
     private static void transferSuccess(StreamEvent event) {
-        String json = gson.toJson(event.myTwin(), new TypeToken<MyTwin>() {
+        String json = gson.toJson(event.myTwin(), new TypeToken<MyTwinModel>() {
         }.getType());
         transfer(event, json, SUCCESS);
     }
@@ -103,6 +103,7 @@ public class IoticsPublisher extends AbstractProcessor {
 
         relationships = new HashSet<>();
         relationships.add(SUCCESS);
+        relationships.add(ORIGINAL);
         relationships.add(FAILURE);
         relationships = Collections.unmodifiableSet(relationships);
 
@@ -139,23 +140,23 @@ public class IoticsPublisher extends AbstractProcessor {
             try {
                 JsonElement jsonElement = JsonParser.parseReader(new InputStreamReader(in));
                 Gson gson = new Gson();
-                List<MyTwin> receivedTwins;
+                List<MyTwinModel> receivedTwins;
                 if (jsonElement.isJsonArray()) {
                     // Specify the list type using TypeToken
-                    Type listType = new TypeToken<List<MyTwin>>() {
+                    Type listType = new TypeToken<List<MyTwinModel>>() {
                     }.getType();
 
                     // Convert the JsonElement to a List<MyCustomClass>
                     receivedTwins = gson.fromJson(jsonElement, listType);
                 } else {
-                    Type type = new TypeToken<MyTwin>() {
+                    Type type = new TypeToken<MyTwinModel>() {
                     }.getType();
-                    MyTwin myTwin = gson.fromJson(jsonElement, type);
+                    MyTwinModel myTwin = gson.fromJson(jsonElement, type);
                     receivedTwins = Lists.newArrayList(myTwin);
                 }
 
                 // latch to # of streams, then pass in the output stream and dec in the
-                // onnext or onerror to make sure we unblock when all sharing occurred
+                // onNext or onError to make sure we unblock when all sharing occurred
 
                 receivedTwins.forEach(myTwin -> {
                     Optional<MyProperty> pr = myTwin.properties().stream()
@@ -173,7 +174,7 @@ public class IoticsPublisher extends AbstractProcessor {
         });
         try {
             latch.await();
-            session.transfer(flowFile, SUCCESS);
+            session.transfer(flowFile, ORIGINAL);
         } catch (InterruptedException e) {
             session.transfer(flowFile, FAILURE);
             throw new RuntimeException(e);
@@ -233,18 +234,18 @@ public class IoticsPublisher extends AbstractProcessor {
         return event.myTwin().hostDid() + "/" + event.myTwin().id() + "/" + event.port().id();
     }
 
-    public record StreamEvent(ProcessSession session, FlowFile flowFile, CountDownLatch latchFeeds, MyTwin myTwin,
+    public record StreamEvent(ProcessSession session, FlowFile flowFile, CountDownLatch latchFeeds, MyTwinModel myTwin,
                               Port port) {
     }
 
-    public record PublishFailure(MyTwin twin, String error) {
+    public record PublishFailure(MyTwinModel twin, String error) {
 
     }
 
     public class StreamNewFeedListener {
 
         @Subscribe
-        public void onFollowEvent(IoticsPublisher.StreamEvent event) {
+        public void shareEvent(IoticsPublisher.StreamEvent event) {
             shareFeed(event);
         }
     }

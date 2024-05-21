@@ -20,7 +20,7 @@ public record MyProperty(String key, String value, String type, String lang, Str
         this(key, value.getValue(), "StringLiteral", null, null);
     }
 
-    public static MyProperty Factory(Property property) {
+    public static MyProperty factory(Property property) {
         String key = property.getKey();
         if (property.hasLiteralValue())
             return new MyProperty(key, property.getLiteralValue());
