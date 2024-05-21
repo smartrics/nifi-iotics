@@ -10,9 +10,6 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,7 +53,7 @@ public class IoticsSPARQLQueryIT {
     }
 
     private void test() {
-        testRunner.run(1);
+        testRunner.run();
         //assert the input Q is empty and the flowfile is processed
         testRunner.assertQueueEmpty();
         List<MockFlowFile> resultsList = testRunner.getFlowFilesForRelationship(Constants.SUCCESS);

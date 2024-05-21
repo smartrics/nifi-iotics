@@ -16,7 +16,6 @@
  */
 package smartrics.iotics.nifi.processors;
 
-import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 import com.iotics.api.Scope;
 import com.iotics.api.SparqlQueryRequest;
@@ -58,6 +57,7 @@ import static smartrics.iotics.nifi.processors.Constants.*;
         """)
 @SeeAlso(classNames = {"smartrics.iotics.nifi.processors.IoticsFinder"})
 @InputRequirement(InputRequirement.Requirement.INPUT_REQUIRED)
+@ReadsAttribute(attribute = "sparql.query", description = "The SPARQL query to execute.")
 @WritesAttributes({
         @WritesAttribute(attribute = "sparql.query.result", description = "The result of the SPARQL query."),
         @WritesAttribute(attribute = "sparql.query.error", description = "Any error encountered during the SPARQL query execution.")
@@ -162,6 +162,7 @@ public class IoticsSPARQLQuery extends AbstractProcessor {
         });
 
         try {
+            // seems to be needed to have tests passing otherwise the session doesn't seem to be transferred
             latch.await();
         } catch (InterruptedException e) {
             throw new ProcessException(e);
