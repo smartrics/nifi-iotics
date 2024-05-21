@@ -6,13 +6,16 @@ import com.google.gson.JsonParser;
 import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
@@ -20,6 +23,15 @@ import static org.hamcrest.Matchers.is;
 import static smartrics.iotics.nifi.processors.IoticsControllerServiceFactory.injectIoticsHostService;
 
 public class IoticsSPARQLQueryIT {
+    public static final String QUERY = """
+            PREFIX schema: <http://schema.org/>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+            SELECT (COUNT(?car) AS ?numberOfCars)
+            WHERE {
+              ?car a schema:Car .
+            }
+            """;
     private TestRunner testRunner;
 
     @BeforeEach
@@ -31,23 +43,31 @@ public class IoticsSPARQLQueryIT {
 
     @Test
     public void testProcessorWithInput() {
-        testRunner.enqueue("""
-                PREFIX schema: <http://schema.org/>
-                PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        testRunner.enqueue(QUERY);
+        test();
+    }
 
-                SELECT (COUNT(?car) AS ?numberOfCars)
-                WHERE {
-                  ?car a schema:Car .
-                }
-                """);
+    @Test
+    public void testProcessorWithAttributes() {
+        Map<String, String> attributes = new HashMap<>();
+        attributes.put("sparql.query", QUERY);
+        testRunner.enqueue("".getBytes(), attributes);
+        test();
+    }
+
+    private void test() {
         testRunner.run(1);
         //assert the input Q is empty and the flowfile is processed
         testRunner.assertQueueEmpty();
         List<MockFlowFile> resultsList = testRunner.getFlowFilesForRelationship(Constants.SUCCESS);
 
         MockFlowFile outputFlowfile = resultsList.getFirst();
-        String json = new String(testRunner.getContentAsByteArray(outputFlowfile));
 
+        assertJson(new String(testRunner.getContentAsByteArray(outputFlowfile)));
+        assertJson(outputFlowfile.getAttribute("sparql.query.result"));
+    }
+
+    private static void assertJson(@NotNull String json) {
         JsonObject root = JsonParser.parseString(json).getAsJsonObject();
         JsonObject results = root.getAsJsonObject("results");
         JsonArray bindings = results.getAsJsonArray("bindings");

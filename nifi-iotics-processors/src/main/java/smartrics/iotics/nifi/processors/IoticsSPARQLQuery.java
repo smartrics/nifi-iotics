@@ -22,8 +22,12 @@ import com.iotics.api.Scope;
 import com.iotics.api.SparqlQueryRequest;
 import com.iotics.api.SparqlQueryResponse;
 import io.grpc.stub.StreamObserver;
+import org.apache.nifi.annotation.behavior.InputRequirement;
 import org.apache.nifi.annotation.behavior.ReadsAttribute;
+import org.apache.nifi.annotation.behavior.WritesAttribute;
+import org.apache.nifi.annotation.behavior.WritesAttributes;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
+import org.apache.nifi.annotation.documentation.SeeAlso;
 import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
@@ -50,8 +54,14 @@ import static smartrics.iotics.nifi.processors.Constants.*;
 @Tags({"IOTICS", "SPARQL", "QUERY"})
 @CapabilityDescription("""
         Runs a SPARQL query and returns the output to the flow file.
+        The SPARQL query is provided an input flow file and scope set as an attribute.
         """)
-@ReadsAttribute(attribute = "sql.query", description = "The SQL select query to execute.")
+@SeeAlso(classNames = {"smartrics.iotics.nifi.processors.IoticsFinder"})
+@InputRequirement(InputRequirement.Requirement.INPUT_REQUIRED)
+@WritesAttributes({
+        @WritesAttribute(attribute = "sparql.query.result", description = "The result of the SPARQL query."),
+        @WritesAttribute(attribute = "sparql.query.error", description = "Any error encountered during the SPARQL query execution.")
+})
 public class IoticsSPARQLQuery extends AbstractProcessor {
 
     private List<PropertyDescriptor> descriptors;
@@ -104,34 +114,50 @@ public class IoticsSPARQLQuery extends AbstractProcessor {
             return;
         }
 
-        AtomicReference<String> queryRef = new AtomicReference<>();
+        final AtomicReference<String> queryRef = new AtomicReference<>(ff.getAttribute("sparql.query"));
 
-        CountDownLatch latch1 = new CountDownLatch(1);
-        session.read(ff, in -> {
-            String content = readInputStream(in);
-            queryRef.set(content);
-            latch1.countDown();
-        });
-
-        try {
-            latch1.await();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new ProcessException("interrupted while reading flow file", e);
+        if(queryRef.get() == null) {
+            // Read the FlowFile content synchronously if not available in the attribute
+            try {
+                session.read(ff, in -> {
+                    try {
+                        String content = readInputStream(in);
+                        queryRef.set(content);
+                    } catch (IOException e) {
+                        getLogger().error("Failed to read flow file content", e);
+                        throw new ProcessException(e);
+                    }
+                });
+            } catch (ProcessException e) {
+                session.transfer(ff, FAILURE);
+                return;
+            }
         }
 
+        // Transfer the original FlowFile immediately after reading its content
         session.transfer(ff, ORIGINAL);
 
         Scope scope = Scope.valueOf(context.getProperty(QUERY_SCOPE).getValue());
 
+        // Create a new FlowFile for the query result
+        FlowFile flowFile = session.create();
+
+        // Perform the SPARQL query asynchronously
         CountDownLatch latch = new CountDownLatch(1);
-        final FlowFile flowFile = session.create();
         query(queryRef.get(), scope).thenAccept(queryResult -> {
-            FlowFile updatedFlowFile = session.write(flowFile, out -> out.write(queryResult.getBytes()));
-            session.transfer(updatedFlowFile, SUCCESS);
-            latch.countDown();
+            try {
+                FlowFile updatedFlowFile = session.write(flowFile, out -> out.write(queryResult.getBytes()));
+                updatedFlowFile = session.putAttribute(updatedFlowFile, "sparql.query.result", queryResult);
+                session.transfer(updatedFlowFile, SUCCESS);
+                latch.countDown();
+            } catch (Exception e) {
+                getLogger().error("Failed to write query result", e);
+                session.remove(flowFile);
+            }
         }).exceptionally(throwable -> {
-            session.transfer(flowFile, FAILURE);
+            getLogger().error("Error during SPARQL query execution", throwable);
+            FlowFile errorFlowFile = session.putAttribute(flowFile, "sparql.query.error", throwable.getMessage());
+            session.transfer(errorFlowFile, FAILURE);
             return null;
         });
 
@@ -143,7 +169,7 @@ public class IoticsSPARQLQuery extends AbstractProcessor {
     }
 
     private CompletableFuture<String> query(String query, Scope scope) {
-        List<ByteString> chunks = Lists.newArrayList();
+        List<ByteString> chunks = new ArrayList<>();
         CompletableFuture<String> resultFuture = new CompletableFuture<>();
         getLogger().debug("Running [" + scope + "] query: " + query);
         this.ioticsApi.metaAPI().sparqlQuery(SparqlQueryRequest.newBuilder()
@@ -168,6 +194,7 @@ public class IoticsSPARQLQuery extends AbstractProcessor {
 
             @Override
             public void onError(Throwable t) {
+                getLogger().error("Error in SPARQL query response", t);
                 resultFuture.completeExceptionally(t);
             }
 
