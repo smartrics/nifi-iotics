@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import smartrics.iotics.connectors.twins.Mapper;
 import smartrics.iotics.connectors.twins.annotations.XsdDatatype;
 import smartrics.iotics.host.IoticsApi;
 import smartrics.iotics.host.UriConstants;
@@ -31,6 +32,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
+import static smartrics.iotics.nifi.processors.objects.Utils.*;
 
 class JsonLdTwinTest {
 
@@ -63,7 +65,7 @@ class JsonLdTwinTest {
     void addsLangPropertyWithStringType() {
         List<RDFDataset.Quad> quads = List.of(q("http://schema.org/foo", "1", XsdDatatype.byte_, "en"));
         twin = newTwin(quads);
-        LangLiteral literal = findLang("http://schema.org/foo", "en").orElseThrow().getLangLiteralValue();
+        LangLiteral literal = findLang(twin, "http://schema.org/foo", "en").orElseThrow().getLangLiteralValue();
         assertThat(literal.getValue(), is(equalTo("1")));
         assertThat(literal.getLang(), is(equalTo("en")));
     }
@@ -72,7 +74,7 @@ class JsonLdTwinTest {
     void addsStringProperty() {
         List<RDFDataset.Quad> quads = List.of(q("http://schema.org/foo", "bar", "string"));
         twin = newTwin(quads);
-        Literal literal = find("http://schema.org/foo", "string").orElseThrow().getLiteralValue();
+        Literal literal = find(twin, "http://schema.org/foo", "string").orElseThrow().getLiteralValue();
         assertThat(literal.getValue(), is(equalTo("bar")));
         assertThat(literal.getDataType(), is(equalTo("string")));
     }
@@ -81,7 +83,7 @@ class JsonLdTwinTest {
     void mapsXSDDatatypesToTheirName() {
         List<RDFDataset.Quad> quads = List.of(q("http://schema.org/foo", "1", "http://www.w3.org/2001/XMLSchema#integer"));
         twin = newTwin(quads);
-        Literal literal = find("http://schema.org/foo", "integer").orElseThrow().getLiteralValue();
+        Literal literal = find(twin, "http://schema.org/foo", "integer").orElseThrow().getLiteralValue();
         assertThat(literal.getValue(), is(equalTo("1")));
         assertThat(literal.getDataType(), is(equalTo("integer")));
     }
@@ -90,7 +92,7 @@ class JsonLdTwinTest {
     void mapsIRIToUri() {
         List<RDFDataset.Quad> quads = List.of(q("http://schema.org/foo", new RDFDataset.IRI("http://schema.org/Car")));
         twin = newTwin(quads);
-        Uri uri = findURI("http://schema.org/foo").orElseThrow().getUriValue();
+        Uri uri = findURI(twin, "http://schema.org/foo").orElseThrow().getUriValue();
         assertThat(uri.getValue(), is(equalTo("http://schema.org/Car")));
     }
 
@@ -98,7 +100,7 @@ class JsonLdTwinTest {
     void addsLiteralProperty() {
         List<RDFDataset.Quad> quads = List.of(q("http://schema.org/foo", "1", XsdDatatype.integer));
         twin = newTwin(quads);
-        Literal literal = find("http://schema.org/foo", "integer").orElseThrow().getLiteralValue();
+        Literal literal = find(twin, "http://schema.org/foo", "integer").orElseThrow().getLiteralValue();
         assertThat(literal.getValue(), is(equalTo("1")));
         assertThat(literal.getDataType(), is(equalTo("integer")));
     }
@@ -108,7 +110,7 @@ class JsonLdTwinTest {
         List<RDFDataset.Quad> quads = List.of();
         String defAllowListValue = "did:iotics:1,did:iotics:2";
         twin = new JsonLdTwin(api, sim, quads, myId, defAllowListValue);
-        Uri uri = findURI(UriConstants.IOTICSProperties.HostAllowListName).orElseThrow().getUriValue();
+        Uri uri = findURI(twin, UriConstants.IOTICSProperties.HostAllowListName).orElseThrow().getUriValue();
         assertThat(uri.getValue(), is(equalTo(defAllowListValue)));
     }
 
@@ -117,7 +119,7 @@ class JsonLdTwinTest {
         List<RDFDataset.Quad> quads = List.of(q(UriConstants.IOTICSProperties.HostAllowListName, UriConstants.IOTICSProperties.HostAllowListValues.ALL.toString()));
         String defAllowListValue = "did:iotics:1,did:iotics:2";
         twin = new JsonLdTwin(api, sim, quads, myId, defAllowListValue);
-        Uri uri = findURI(UriConstants.IOTICSProperties.HostAllowListName).orElseThrow().getUriValue();
+        Uri uri = findURI(twin, UriConstants.IOTICSProperties.HostAllowListName).orElseThrow().getUriValue();
         assertThat(uri.getValue(), is(equalTo(UriConstants.IOTICSProperties.HostAllowListValues.ALL.toString())));
     }
 
@@ -130,7 +132,7 @@ class JsonLdTwinTest {
 
     @Test
     void readsFullTwin() throws IOException {
-        String content = Files.readString(Path.of("src\\test\\resources\\car_twin.json"));
+        String content = Files.readString(Path.of("src\\test\\resources\\car_twin_ld.json"));
         Object jsonObject = JsonUtils.fromString(content);
         JsonLdOptions options = new JsonLdOptions();
         // Convert JSON-LD to RDF triples
@@ -149,29 +151,6 @@ class JsonLdTwinTest {
 
     private @NotNull JsonLdTwin newTwin(List<RDFDataset.Quad> quads) {
         return new JsonLdTwin(api, sim, quads, myId, UriConstants.IOTICSProperties.HostAllowListValues.NONE.toString());
-    }
-
-    public Optional<Property> find(String key, String type) {
-        return twin.getUpsertTwinRequest().getPayload().getPropertiesList().stream().filter(p ->
-                        p.getKey().equals(key) &&
-                                p.hasLiteralValue() &&
-                                p.getLiteralValue().getDataType().equals(type))
-                .findFirst();
-    }
-
-    public Optional<Property> findURI(String key) {
-        return twin.getUpsertTwinRequest().getPayload().getPropertiesList().stream().filter(p ->
-                        p.getKey().equals(key) &&
-                                p.hasUriValue())
-                .findFirst();
-    }
-
-    public Optional<Property> findLang(String key, String lang) {
-        return twin.getUpsertTwinRequest().getPayload().getPropertiesList().stream().filter(p ->
-                        p.getKey().equals(key) &&
-                                p.hasLangLiteralValue() &&
-                                p.getLangLiteralValue().getLang().equals(lang))
-                .findFirst();
     }
 
     public RDFDataset.Quad q(String prop, RDFDataset.IRI iri) {

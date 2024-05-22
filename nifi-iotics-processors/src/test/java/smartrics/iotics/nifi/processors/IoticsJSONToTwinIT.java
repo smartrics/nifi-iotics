@@ -22,6 +22,7 @@ import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import smartrics.iotics.nifi.processors.objects.MyTwinModel;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -35,64 +36,76 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static smartrics.iotics.nifi.processors.Constants.ID_PROP;
 import static smartrics.iotics.nifi.processors.IoticsControllerServiceFactory.injectIoticsHostService;
 
-public class IoticsJSONLDToTwinIT {
+public class IoticsJSONToTwinIT {
 
     private TestRunner testRunner;
+    private static final String CONTENT = """
+                {
+                  "properties": [
+                    {
+                      "key": "http://schema.org/identifier",
+                      "value": "1234567890",
+                      "type": "StringLiteral"
+                    }
+                  ],
+                  "feeds": [
+                    {
+                      "id": "status"
+                    }
+                  ]
+                }
+                """;
+
 
     @BeforeEach
     public void init() throws Exception {
-        testRunner = TestRunners.newTestRunner(IoticsJSONLDToTwin.class);
+        testRunner = TestRunners.newTestRunner(IoticsJSONToTwin.class);
         injectIoticsHostService(testRunner);
     }
 
     @Test
-    public void missingIdentifierTransitionsToFail() {
-        testRunner.enqueue("""
-                {
-                  "@context": {
-                    "label": "rdfs:label"
-                  },
-                  "@type": "http://schema.org/Car",
-                  "label": "Toyota Camry 1"
-                }
-                """);
+    public void missingIdentifierTransitionsToFail() throws IOException {
+        testRunner.setProperty(ID_PROP.getName(), "http://schema.org/missing_identifier");
+        testRunner.enqueue(CONTENT);
         testRunner.run(1);
         //assert the input Q is empty and the flowfile is processed
         testRunner.assertQueueEmpty();
         List<MockFlowFile> failure = testRunner.getFlowFilesForRelationship(Constants.FAILURE);
-//        assertThat("Number of flowfiles in Fail Queue is as expected (No of Flowfile = 1) ", failure.size() == 1);
         MockFlowFile outputFlowfile = failure.getFirst();
         String outputFlowfileContent = new String(testRunner.getContentAsByteArray(outputFlowfile));
         Gson gson = new Gson();
         Map<String, Object> json = (Map<String, Object>) gson.fromJson(outputFlowfileContent, Map.class);
-        assertThat(json.get("error").toString(), is(equalTo("invalid JSON-LD: missing 'http://schema.org/identifier'")));
+        assertThat(json.get("error").toString(), is(equalTo("invalid twin: missing property http://schema.org/missing_identifier")));
     }
 
     @Test
     public void invalidJsonTransitionsToFail() {
         testRunner.enqueue("""
-                {
-                  "@context": {
-                    "label": "rdfs:label",
-                  },
-                }
+                                {
+                  "properties": [
+                    {
+                      "key": "http://data.iotics.com/nifi/isOperational",
+                      "value": "true",
+                      "type": "Literal",
+                      "dataType": "boolean"
+                    },
+
+                                }
                 """);
         testRunner.run(1);
         //assert the input Q is empty and the flowfile is processed
         testRunner.assertQueueEmpty();
         List<MockFlowFile> failure = testRunner.getFlowFilesForRelationship(Constants.FAILURE);
-//        assertThat("Number of flowfiles in Fail Queue is as expected (No of Flowfile = 1) ", failure.size() == 1);
         MockFlowFile outputFlowfile = failure.getFirst();
         String outputFlowfileContent = new String(testRunner.getContentAsByteArray(outputFlowfile));
         Gson gson = new Gson();
         Map<String, Object> json = (Map<String, Object>) gson.fromJson(outputFlowfileContent, Map.class);
-        assertThat(json.get("error").toString(), containsString("invalid JSON-LD: Unexpected character"));
+        assertThat(json.get("error").toString(), containsString("MalformedJsonException"));
     }
 
     @Test
     public void successTransitionGetsTheDID() throws IOException {
-        String content = Files.readString(Path.of("src\\test\\resources\\car_twin_ld.json"));
-        testRunner.enqueue(content);
+        testRunner.enqueue(CONTENT);
         testRunner.run(1);
         //assert the input Q is empty and the flowfile is processed
         testRunner.assertQueueEmpty();
@@ -106,14 +119,11 @@ public class IoticsJSONLDToTwinIT {
 
         List<MockFlowFile> original = testRunner.getFlowFilesForRelationship(Constants.ORIGINAL);
         assertThat("Number of flowfiles in Original Queue is as expected (No of Flowfile = 1) ", original.size() == 1);
-
-
     }
 
     @Test
     public void originalTransitionRetrievesTheInputFlowFile() throws IOException {
-        String content = Files.readString(Path.of("src\\test\\resources\\car_twin_ld.json"));
-        testRunner.enqueue(content);
+        testRunner.enqueue(CONTENT);
         testRunner.run(1);
         //assert the input Q is empty and the flowfile is processed
         testRunner.assertQueueEmpty();
@@ -123,9 +133,8 @@ public class IoticsJSONLDToTwinIT {
         MockFlowFile outputFlowfile = original.getFirst();
         String outputFlowfileContent = new String(testRunner.getContentAsByteArray(outputFlowfile));
         Gson gson = new Gson();
-        Map<String, Object> json = (Map<String, Object>) gson.fromJson(outputFlowfileContent, Map.class);
-
-        assertThat(json.get("ID").toString(), is(equalTo("1")));
+        MyTwinModel myModel = gson.fromJson(outputFlowfileContent, MyTwinModel.class);
+        assertThat(myModel.properties().getFirst().value(), is(equalTo("1234567890")));
     }
 
 }

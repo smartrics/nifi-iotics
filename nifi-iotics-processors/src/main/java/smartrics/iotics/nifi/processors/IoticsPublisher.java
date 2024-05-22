@@ -210,7 +210,7 @@ public class IoticsPublisher extends AbstractProcessor {
     }
 
     private Optional<ShareFeedDataRequest> newShareFeedDataRequest(StreamEvent event) {
-        if (event.port().payloadAsJson().isEmpty()) {
+        if (event.port().valuesAsJson().keySet().isEmpty()) {
             return Optional.empty();
         }
         return Optional.of(ShareFeedDataRequest.newBuilder()
@@ -224,8 +224,7 @@ public class IoticsPublisher extends AbstractProcessor {
                         .build())
                 .setPayload(ShareFeedDataRequest.Payload.newBuilder()
                         .setSample(FeedData.newBuilder()
-                                .setData(ByteString.copyFromUtf8(event.port().payloadAsJson().get()))
-                                .build())
+                                .setData(ByteString.copyFromUtf8(event.port().valuesAsJson().getAsString())))
                         .build())
                 .build());
     }

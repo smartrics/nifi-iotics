@@ -33,6 +33,7 @@ public class IoticsSPARQLQueryIT {
 
     @BeforeEach
     public void init() throws Exception {
+        Thread.sleep(100);
         testRunner = TestRunners.newTestRunner(IoticsSPARQLQuery.class);
         injectIoticsHostService(testRunner);
         testRunner.setProperty(Constants.QUERY_SCOPE, "LOCAL");

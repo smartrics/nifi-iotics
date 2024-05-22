@@ -17,12 +17,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static java.lang.Thread.sleep;
 import static smartrics.iotics.nifi.processors.Constants.SUCCESS;
 import static smartrics.iotics.nifi.processors.IoticsControllerServiceFactory.injectIoticsHostService;
-import static smartrics.iotics.nifi.processors.MyTwinMaker.makeMyTwin;
+import static smartrics.iotics.nifi.processors.JsonTwinForTesting.makeMyTwin;
 
 public class IoticsFollowerIT {
     private TestRunner testRunner;
     private ExecutorService executor;
-    private MyTwinMaker myTwinMaker;
+    private JsonTwinForTesting myTwinMaker;
     private AtomicBoolean stop;
 
     @AfterEach
@@ -48,7 +48,7 @@ public class IoticsFollowerIT {
 
     @Test
     public void testProcessor() throws Exception {
-        String json = myTwinMaker.twin().toJson();
+        String json = myTwinMaker.getModel().toJson();
         testRunner.enqueue(json);
         int EL = 10;
         CountDownLatch latch = new CountDownLatch(EL);
