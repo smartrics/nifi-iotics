@@ -38,9 +38,6 @@ public class JoltTest {
         MyTwinModel m = g.fromJson(s, MyTwinModel.class);
         List<MyProperty> properties = m.properties();
 
-        properties.forEach(p -> System.out.println(g.toJson(p)));
-
-
         MyProperty prop = properties.stream().filter(p -> p.key().equals("http://schema.org/identifier")).findFirst().orElseThrow();
         assertThat(prop.value(), is("1"));
         assertThat(prop.type(), is("StringLiteral"));
@@ -55,6 +52,10 @@ public class JoltTest {
 
         prop = properties.stream().filter(p -> p.key().equals("http://schema.org/color")).findFirst().orElseThrow();
         assertThat(prop.value(), is("Red"));
+        assertThat(prop.type(), is("StringLiteral"));
+
+        prop = properties.stream().filter(p -> p.key().equals("http://schema.org/givenName")).findFirst().orElseThrow();
+        assertThat(prop.value(), is("Bob"));
         assertThat(prop.type(), is("StringLiteral"));
 
         prop = properties.stream().filter(p -> p.key().equals("http://data.iotics.com/nifi/isOperational")).findFirst().orElseThrow();
