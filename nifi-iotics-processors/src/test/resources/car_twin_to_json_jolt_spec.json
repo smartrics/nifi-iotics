@@ -1,0 +1,97 @@
+[
+  {
+    "operation": "shift",
+    "spec": {
+      "ID": "properties[0].value",
+      "Make": "properties[1].value",
+      "Model": "properties[2].value",
+      "Colour": "properties[3].value",
+      "isOperational": "properties[4].value",
+      "Comment": "properties[5].value",
+      "Units": "properties[6].value"
+    }
+  },
+  {
+    "operation": "default",
+    "spec": {
+      "properties[]": {
+        "0": {
+          "key": "http://schema.org/identifier",
+          "type": "StringLiteral"
+        },
+        "1": {
+          "key": "http://schema.org/manufacturer",
+          "type": "StringLiteral"
+        },
+        "2": {
+          "key": "http://schema.org/model",
+          "type": "StringLiteral"
+        },
+        "3": {
+          "key": "http://schema.org/color",
+          "type": "StringLiteral"
+        },
+        "4": {
+          "key": "http://data.iotics.com/nifi/isOperational",
+          "type": "Literal",
+          "dataType": "boolean"
+        },
+        "5": {
+          "key": "http://www.w3.org/2000/01/rdf-schema#comment",
+          "type": "StringLiteral"
+        },
+        "6": {
+          "key": "https://data.iotics.com/nifi/units",
+          "type": "Literal",
+          "dataType": "integer"
+        },
+        "7": {
+          "key": "http://data.iotics.com/public#hostAllowList",
+          "value": "http://data.iotics.com/public#none",
+          "type": "Uri"
+        },
+        "8": {
+          "key": "http://data.iotics.com/public#hostMetadataAllowList",
+          "value": "http://data.iotics.com/public#none",
+          "type": "Uri"
+        },
+        "9": {
+          "key": "http://www.w3.org/2000/01/rdf-schema#label",
+          "value": "",
+          "type": "StringLiteral"
+        }
+      }
+    }
+  },
+  {
+    "operation": "default",
+    "spec": {
+      "feeds": [
+        {
+          "id": "status",
+          "properties": [
+            {
+              "key": "http://www.w3.org/2000/01/rdf-schema#comment",
+              "value": "Current operational status of this car",
+              "type": "StringLiteral"
+            },
+            {
+              "key": "http://www.w3.org/2000/01/rdf-schema#label",
+              "value": "OperationalStatus",
+              "type": "StringLiteral"
+            }
+          ],
+          "storeLast": true,
+          "values": [
+            {
+              "label": "isOperational",
+              "comment": "current operational status",
+              "dataType": "boolean"
+            }
+          ]
+        }
+      ],
+      "inputs": []
+    }
+  }
+]
