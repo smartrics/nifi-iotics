@@ -6,6 +6,7 @@ import com.github.jsonldjava.core.JsonLdOptions;
 import com.github.jsonldjava.core.JsonLdProcessor;
 import com.github.jsonldjava.core.RDFDataset;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import smartrics.iotics.nifi.processors.objects.MyProperty;
@@ -33,10 +34,12 @@ public class JoltTest {
         String inputJson = Files.readString(Path.of("src/test/resources/car.json"));
         String specJson = Files.readString(Path.of("src/test/resources/car_twin_to_json_jolt_spec.json"));
         Object actualOutput = convert(inputJson, specJson);
-        Gson g = new Gson();
+        Gson g = new GsonBuilder().setPrettyPrinting().create();
         String s = g.toJson(actualOutput);
         MyTwinModel m = g.fromJson(s, MyTwinModel.class);
         List<MyProperty> properties = m.properties();
+
+        properties.forEach(p -> System.out.println(g.toJson(p)));
 
         MyProperty prop = properties.stream().filter(p -> p.key().equals("http://schema.org/identifier")).findFirst().orElseThrow();
         assertThat(prop.value(), is("1"));
@@ -60,8 +63,7 @@ public class JoltTest {
 
         prop = properties.stream().filter(p -> p.key().equals("http://data.iotics.com/nifi/isOperational")).findFirst().orElseThrow();
         assertThat(prop.value(), is("true"));
-        assertThat(prop.type(), is("Literal"));
-        assertThat(prop.dataType(), is("boolean"));
+        assertThat(prop.type(), is("StringLiteral"));
 
         prop = properties.stream().filter(p -> p.key().equals("http://www.w3.org/2000/01/rdf-schema#comment")).findFirst().orElseThrow();
         assertThat(prop.value(), is("Well maintained"));
@@ -69,8 +71,7 @@ public class JoltTest {
 
         prop = properties.stream().filter(p -> p.key().equals("https://data.iotics.com/nifi/units")).findFirst().orElseThrow();
         assertThat(prop.value(), is("5"));
-        assertThat(prop.type(), is("Literal"));
-        assertThat(prop.dataType(), is("integer"));
+        assertThat(prop.type(), is("StringLiteral"));
 
         prop = properties.stream().filter(p -> p.key().equals("http://data.iotics.com/public#hostAllowList")).findFirst().orElseThrow();
         assertThat(prop.value(), is("http://data.iotics.com/public#none"));

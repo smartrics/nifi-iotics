@@ -38,8 +38,7 @@
         },
         "5": {
           "key": "http://data.iotics.com/nifi/isOperational",
-          "type": "Literal",
-          "dataType": "boolean"
+          "type": "StringLiteral"
         },
         "6": {
           "key": "http://www.w3.org/2000/01/rdf-schema#comment",
@@ -47,8 +46,7 @@
         },
         "7": {
           "key": "https://data.iotics.com/nifi/units",
-          "type": "Literal",
-          "dataType": "integer"
+          "type": "StringLiteral"
         },
         "8": {
           "key": "http://data.iotics.com/public#hostAllowList",
