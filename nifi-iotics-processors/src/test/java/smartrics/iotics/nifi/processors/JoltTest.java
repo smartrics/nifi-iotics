@@ -37,6 +37,10 @@ public class JoltTest {
         String s = g.toJson(actualOutput);
         MyTwinModel m = g.fromJson(s, MyTwinModel.class);
         List<MyProperty> properties = m.properties();
+
+        properties.forEach(p -> System.out.println(g.toJson(p)));
+
+
         MyProperty prop = properties.stream().filter(p -> p.key().equals("http://schema.org/identifier")).findFirst().orElseThrow();
         assertThat(prop.value(), is("1"));
         assertThat(prop.type(), is("StringLiteral"));
