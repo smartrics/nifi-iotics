@@ -24,6 +24,11 @@
       "type": "StringLiteral"
     },
     {
+      "key": "http://schema.org/givenName",
+      "value": "Bob",
+      "type": "StringLiteral"
+    },
+    {
       "key": "http://schema.org/identifier",
       "value": "9876547",
       "type": "StringLiteral"

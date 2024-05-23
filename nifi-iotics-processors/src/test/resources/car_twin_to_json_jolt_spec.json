@@ -6,9 +6,10 @@
       "Make": "properties[1].value",
       "Model": "properties[2].value",
       "Colour": "properties[3].value",
-      "isOperational": "properties[4].value",
-      "Comment": "properties[5].value",
-      "Units": "properties[6].value"
+      "Owner": "properties[4].value",
+      "isOperational": "properties[5].value",
+      "Comment": "properties[6].value",
+      "Units": "properties[7].value"
     }
   },
   {
@@ -32,32 +33,36 @@
           "type": "StringLiteral"
         },
         "4": {
+          "key": "http://schema.org/givenName",
+          "type": "StringLiteral"
+        },
+        "5": {
           "key": "http://data.iotics.com/nifi/isOperational",
           "type": "Literal",
           "dataType": "boolean"
         },
-        "5": {
+        "6": {
           "key": "http://www.w3.org/2000/01/rdf-schema#comment",
           "type": "StringLiteral"
         },
-        "6": {
+        "7": {
           "key": "https://data.iotics.com/nifi/units",
           "type": "Literal",
           "dataType": "integer"
         },
-        "7": {
+        "8": {
           "key": "http://data.iotics.com/public#hostAllowList",
           "value": "http://data.iotics.com/public#none",
           "type": "Uri"
         },
-        "8": {
+        "9": {
           "key": "http://data.iotics.com/public#hostMetadataAllowList",
           "value": "http://data.iotics.com/public#none",
           "type": "Uri"
         },
-        "9": {
+        "10": {
           "key": "http://www.w3.org/2000/01/rdf-schema#label",
-          "value": "",
+          "value": "A car",
           "type": "StringLiteral"
         }
       }

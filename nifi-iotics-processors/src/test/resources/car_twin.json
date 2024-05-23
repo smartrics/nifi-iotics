@@ -27,6 +27,11 @@
       "type": "StringLiteral"
     },
     {
+      "key": "http://schema.org/givenName",
+      "value": "Bob",
+      "type": "StringLiteral"
+    },
+    {
       "key": "http://schema.org/manufacturer",
       "value": "Toyota",
       "type": "StringLiteral"

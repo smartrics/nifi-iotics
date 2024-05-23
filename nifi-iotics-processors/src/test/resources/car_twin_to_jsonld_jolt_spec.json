@@ -23,6 +23,7 @@
         "ID": "http://schema.org/identifier",
         "Make": "http://schema.org/manufacturer",
         "Model": "http://schema.org/model",
+        "Owner": "http://schema.org/givenName",
         "Colour": "http://schema.org/color",
         "isOperational": "https://data.iotics.com/nifi/isOperational",
         "Units": "https://data.iotics.com/nifi/units"
