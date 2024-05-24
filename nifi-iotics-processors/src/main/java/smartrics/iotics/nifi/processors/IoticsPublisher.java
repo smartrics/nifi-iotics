@@ -54,13 +54,14 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static smartrics.iotics.nifi.processors.Constants.*;
 
 @Tags({"IOTICS", "DIGITAL TWIN", "PUBLISH"})
 @CapabilityDescription("""
-        Processor for IOTICS publish data over a feed
-        """)
+Processor for IOTICS to publish data over one or more feeds.
+""")
 public class IoticsPublisher extends AbstractProcessor {
 
     private static final Gson gson = new Gson();
@@ -135,7 +136,7 @@ public class IoticsPublisher extends AbstractProcessor {
             return;
         }
 
-        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<CountDownLatch> latchFeedsRef = new AtomicReference<>();
         session.read(flowFile, in -> {
             try {
                 JsonElement jsonElement = JsonParser.parseReader(new InputStreamReader(in));
@@ -158,22 +159,18 @@ public class IoticsPublisher extends AbstractProcessor {
                 // latch to # of streams, then pass in the output stream and dec in the
                 // onNext or onError to make sure we unblock when all sharing occurred
 
+                int feedsCount = receivedTwins.stream().mapToInt(myTwinModel -> myTwinModel.feeds().size()).sum();
+                latchFeedsRef.set(new CountDownLatch(feedsCount));
+
                 receivedTwins.forEach(myTwin -> {
-                    Optional<MyProperty> pr = myTwin.properties().stream()
-                            .filter(p -> p.key().equals(context.getProperty(ID_PROP).getValue())).findFirst();
-                    if (pr.isEmpty()) {
-                        getLogger().warn("invalid twin. missing keyName: " + myTwin.id());
-                    }
-                    CountDownLatch latchFeeds = new CountDownLatch(myTwin.feeds().size());
-                    myTwin.feeds().forEach(port -> eventBus.post(new StreamEvent(session, flowFile, latchFeeds, myTwin, port)));
+                    myTwin.feeds().forEach(port -> eventBus.post(new StreamEvent(session, flowFile, latchFeedsRef.get(), myTwin, port)));
                 });
-                latch.countDown();
             } catch (Throwable t) {
                 throw new ProcessException("error handling flowfile", t);
             }
         });
         try {
-            latch.await();
+            latchFeedsRef.get().await();
             session.transfer(flowFile, ORIGINAL);
         } catch (InterruptedException e) {
             session.transfer(flowFile, FAILURE);
@@ -213,18 +210,19 @@ public class IoticsPublisher extends AbstractProcessor {
         if (event.port().valuesAsJson().keySet().isEmpty()) {
             return Optional.empty();
         }
+        Gson g = new Gson();
+        String jsonString = g.toJson(event.port().valuesAsJson());
         return Optional.of(ShareFeedDataRequest.newBuilder()
                 .setHeaders(Builders.newHeadersBuilder(sim.agentIdentity()))
                 .setArgs(ShareFeedDataRequest.Arguments.newBuilder()
                         .setFeedId(FeedID.newBuilder()
-                                .setHostId(event.myTwin().hostDid())
                                 .setTwinId(event.myTwin().id())
                                 .setId(event.port().id())
                                 .build())
                         .build())
                 .setPayload(ShareFeedDataRequest.Payload.newBuilder()
                         .setSample(FeedData.newBuilder()
-                                .setData(ByteString.copyFromUtf8(event.port().valuesAsJson().getAsString())))
+                                .setData(ByteString.copyFromUtf8(jsonString)))
                         .build())
                 .build());
     }

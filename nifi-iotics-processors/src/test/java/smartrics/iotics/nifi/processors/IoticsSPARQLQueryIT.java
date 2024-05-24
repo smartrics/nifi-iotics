@@ -20,15 +20,27 @@ import static org.hamcrest.Matchers.is;
 import static smartrics.iotics.nifi.processors.IoticsControllerServiceFactory.injectIoticsHostService;
 
 public class IoticsSPARQLQueryIT {
-    public static final String QUERY = """
-            PREFIX schema: <http://schema.org/>
-            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+//    public static final String QUERY = """
+//            PREFIX schema: <http://schema.org/>
+//            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+//
+//            SELECT (COUNT(?car) AS ?numberOfCars)
+//            WHERE {
+//              ?car a schema:Car .
+//            }
+//            """;
 
-            SELECT (COUNT(?car) AS ?numberOfCars)
-            WHERE {
-              ?car a schema:Car .
-            }
-            """;
+    public static final String QUERY = """
+PREFIX schema: <http://schema.org/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?car ?property ?value
+WHERE {
+       rdfs:label "A car" ;
+       ?property ?value .
+}
+""";
+
     private TestRunner testRunner;
 
     @BeforeEach
@@ -61,7 +73,9 @@ public class IoticsSPARQLQueryIT {
 
         MockFlowFile outputFlowfile = resultsList.getFirst();
 
-        assertJson(new String(testRunner.getContentAsByteArray(outputFlowfile)));
+        String json = new String(testRunner.getContentAsByteArray(outputFlowfile));
+        System.out.println(json);
+        assertJson(json);
         assertJson(outputFlowfile.getAttribute("sparql.query.result"));
     }
 

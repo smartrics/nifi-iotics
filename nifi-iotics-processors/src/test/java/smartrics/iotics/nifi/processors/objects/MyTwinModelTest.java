@@ -5,12 +5,11 @@ import com.iotics.api.SearchResponse;
 import com.iotics.api.TwinID;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class MyTwinModelTest {
@@ -113,5 +112,31 @@ public class MyTwinModelTest {
         assertNotNull(myTwin.feeds());
         assertNotNull(myTwin.inputs());
 
+    }
+
+    @Test
+    void parseFromJsonWithShareValues() {
+        String content = """
+                {
+                  "id": "did:iotics:2",
+                  "feeds": [
+                    {
+                      "id": "status",
+                      "values": [
+                        {
+                          "label": "op",
+                          "value": true
+                        }
+                      ]
+                    }
+                  ]
+                }
+                """;
+
+        MyTwinModel myTwin = MyTwinModel.fromJson(content);
+        Port status = myTwin.feeds().getFirst();
+        MyValue op = status.values().getFirst();
+        assertThat(op.label(), is("op"));
+        assertThat(op.value(), is("true"));
     }
 }

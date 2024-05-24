@@ -1,0 +1,14 @@
+{
+  "id": "did:iotics:2",
+  "feeds": [
+    {
+      "id": "status",
+      "values": [
+        {
+          "label": "isOperational",
+          "value": true
+        }
+      ]
+    }
+  ]
+}

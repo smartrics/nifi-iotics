@@ -4,4 +4,5 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 SELECT (COUNT(?car) AS ?numberOfCars)
 WHERE {
   ?car a schema:Car .
+  ?car schema:givenName "Bob" .
 }
