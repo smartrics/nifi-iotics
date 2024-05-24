@@ -29,6 +29,15 @@ public class JoltTest {
     public static void setup() {
     }
 
+    private static Object convert(String inputJson, String specJson) {
+        Object input = JsonUtils.jsonToObject(inputJson);
+        List<Object> spec = JsonUtils.jsonToList(specJson);
+
+        // Perform the Jolt transformation
+        Chainr chainr = Chainr.fromSpec(spec);
+        return chainr.transform(input);
+    }
+
     @Test
     public void testCarToJson() throws IOException {
         String inputJson = Files.readString(Path.of("src/test/resources/car.json"));
@@ -110,15 +119,6 @@ public class JoltTest {
         RDFDataset.Quad labelQuad = quadFor("http://www.w3.org/2000/01/rdf-schema#label", quads);
         assertThat(labelQuad.getObject().getValue(), is(equalTo("Toyota Camry 1")));
         assertThat(labelQuad.getObject().getDatatype(), is(equalTo("http://www.w3.org/2001/XMLSchema#string")));
-    }
-
-    private static Object convert(String inputJson, String specJson) {
-        Object input = JsonUtils.jsonToObject(inputJson);
-        List<Object> spec = JsonUtils.jsonToList(specJson);
-
-        // Perform the Jolt transformation
-        Chainr chainr = Chainr.fromSpec(spec);
-        return chainr.transform(input);
     }
 
     private RDFDataset.Quad quadFor(String s, List<RDFDataset.Quad> quads) {

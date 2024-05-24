@@ -1,7 +1,6 @@
 package smartrics.iotics.nifi.processors;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.gson.Gson;
 import com.iotics.api.TwinID;
 import com.iotics.api.UpsertTwinResponse;
 import smartrics.iotics.host.IoticsApi;
@@ -19,6 +18,10 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class JsonTwinForTesting extends JsonTwin {
+
+    public JsonTwinForTesting(IoticsApi api, IdentityManager sim, Identity myIdentity, MyTwinModel model) {
+        super(api, sim, myIdentity, model);
+    }
 
     public static JsonTwinForTesting makeMyTwin(BasicIoticsHostService service) throws Exception {
         CountDownLatch latch = new CountDownLatch(1);
@@ -44,10 +47,6 @@ public class JsonTwinForTesting extends JsonTwin {
         }
         MyTwinModel model = new MyTwinModel(twinID.getHostId(), twinID.getId(), myTwin.properties(), myTwin.feeds(), myTwin.inputs());
         return new JsonTwinForTesting(service.getIoticsApi(), service.getSimpleIdentityManager(), twinIdentity, model);
-    }
-
-    public JsonTwinForTesting(IoticsApi api, IdentityManager sim, Identity myIdentity, MyTwinModel model) {
-        super(api, sim, myIdentity, model);
     }
 
     public void updatePayload() {

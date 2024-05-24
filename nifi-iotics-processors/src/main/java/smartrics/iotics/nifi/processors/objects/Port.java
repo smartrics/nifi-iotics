@@ -65,6 +65,16 @@ public class Port {
         return gson.fromJson(s, Port.class);
     }
 
+    public static Port factory(FeedMeta feedMeta) {
+        return new Port(feedMeta.getFeedId().getId(),
+                List.of(), List.of(), feedMeta.getStoreLast());
+    }
+
+    public static Port factory(InputMeta feedMeta) {
+        return new Port(feedMeta.getInputId().getId(),
+                List.of(), List.of(), false);
+    }
+
     public String id() {
         return id;
     }
@@ -109,21 +119,10 @@ public class Port {
         return Objects.hash(id, properties, storeLast, values);
     }
 
-
     @Override
     public String toString() {
         return "Port{" +
                 "id='" + id + '\'' +
                 '}';
-    }
-
-    public static Port factory(FeedMeta feedMeta) {
-        return new Port(feedMeta.getFeedId().getId(),
-                List.of(),List.of(), feedMeta.getStoreLast());
-    }
-
-    public static Port factory(InputMeta feedMeta) {
-        return new Port(feedMeta.getInputId().getId(),
-                List.of(),List.of(), false);
     }
 }

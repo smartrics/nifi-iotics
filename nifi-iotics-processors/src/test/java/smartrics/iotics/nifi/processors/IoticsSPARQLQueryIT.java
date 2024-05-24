@@ -32,6 +32,22 @@ public class IoticsSPARQLQueryIT {
 
     private TestRunner testRunner;
 
+    private static void assertJson(@NotNull String json) {
+        JsonObject root = JsonParser.parseString(json).getAsJsonObject();
+        JsonObject results = root.getAsJsonObject("results");
+        JsonArray bindings = results.getAsJsonArray("bindings");
+
+        for (int i = 0; i < bindings.size(); i++) {
+            JsonObject binding = bindings.get(i).getAsJsonObject();
+            JsonObject numberOfCarsNode = binding.getAsJsonObject("numberOfCars");
+            if ("literal".equals(numberOfCarsNode.get("type").getAsString()) &&
+                    "http://www.w3.org/2001/XMLSchema#integer".equals(numberOfCarsNode.get("datatype").getAsString())) {
+                int numberOfCars = numberOfCarsNode.get("value").getAsInt();
+                assertThat(numberOfCars, is(greaterThan(0)));
+            }
+        }
+    }
+
     @BeforeEach
     public void init() throws Exception {
         Thread.sleep(1000);
@@ -66,22 +82,6 @@ public class IoticsSPARQLQueryIT {
         System.out.println(json);
         assertJson(json);
         assertJson(outputFlowfile.getAttribute("sparql.query.result"));
-    }
-
-    private static void assertJson(@NotNull String json) {
-        JsonObject root = JsonParser.parseString(json).getAsJsonObject();
-        JsonObject results = root.getAsJsonObject("results");
-        JsonArray bindings = results.getAsJsonArray("bindings");
-
-        for (int i = 0; i < bindings.size(); i++) {
-            JsonObject binding = bindings.get(i).getAsJsonObject();
-            JsonObject numberOfCarsNode = binding.getAsJsonObject("numberOfCars");
-            if ("literal".equals(numberOfCarsNode.get("type").getAsString()) &&
-                    "http://www.w3.org/2001/XMLSchema#integer".equals(numberOfCarsNode.get("datatype").getAsString())) {
-                int numberOfCars = numberOfCarsNode.get("value").getAsInt();
-                assertThat(numberOfCars, is(greaterThan(0)));
-            }
-        }
     }
 
 }

@@ -57,8 +57,8 @@ import static smartrics.iotics.nifi.processors.Constants.*;
 
 @Tags({"IOTICS", "DIGITAL TWIN", "PUBLISH"})
 @CapabilityDescription("""
-Processor for IOTICS to publish data over one or more feeds.
-""")
+        Processor for IOTICS to publish data over one or more feeds.
+        """)
 public class IoticsPublisher extends AbstractProcessor {
 
     private static final Gson gson = new Gson();

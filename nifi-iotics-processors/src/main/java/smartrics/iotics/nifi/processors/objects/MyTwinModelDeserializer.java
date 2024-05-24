@@ -2,6 +2,7 @@ package smartrics.iotics.nifi.processors.objects;
 
 import com.github.jsonldjava.shaded.com.google.common.reflect.TypeToken;
 import com.google.gson.*;
+
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Optional;
@@ -17,17 +18,20 @@ public class MyTwinModelDeserializer implements JsonDeserializer<MyTwinModel> {
 
         List<MyProperty> properties = (List<MyProperty>) Optional.ofNullable(jsonObject.get("properties"))
                 .filter(JsonElement::isJsonArray)
-                .map(e -> context.deserialize(e, new TypeToken<List<MyProperty>>(){}.getType()))
+                .map(e -> context.deserialize(e, new TypeToken<List<MyProperty>>() {
+                }.getType()))
                 .orElse(List.of());
 
         List<Port> feeds = (List<Port>) Optional.ofNullable(jsonObject.get("feeds"))
                 .filter(JsonElement::isJsonArray)
-                .map(e -> context.deserialize(e, new TypeToken<List<Port>>(){}.getType()))
+                .map(e -> context.deserialize(e, new TypeToken<List<Port>>() {
+                }.getType()))
                 .orElse(List.of());
 
         List<Port> inputs = (List<Port>) Optional.ofNullable(jsonObject.get("inputs"))
                 .filter(JsonElement::isJsonArray)
-                .map(e -> context.deserialize(e, new TypeToken<List<Port>>(){}.getType()))
+                .map(e -> context.deserialize(e, new TypeToken<List<Port>>() {
+                }.getType()))
                 .orElse(List.of());
 
         return new MyTwinModel(hostId, id, properties, feeds, inputs);

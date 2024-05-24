@@ -7,7 +7,7 @@ public class JsonToProperty {
 
     public static Property fromJson(JsonObject o) {
         Property.Builder b = Property.newBuilder();
-        if(!o.has("key")) {
+        if (!o.has("key")) {
             throw new IllegalArgumentException("Invalid property: missing \"key\"");
         }
         b.setKey(o.get("key").getAsString());

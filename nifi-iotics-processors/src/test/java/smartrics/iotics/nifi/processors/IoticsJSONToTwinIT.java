@@ -25,8 +25,6 @@ import org.junit.jupiter.api.Test;
 import smartrics.iotics.nifi.processors.objects.MyTwinModel;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -38,24 +36,23 @@ import static smartrics.iotics.nifi.processors.IoticsControllerServiceFactory.in
 
 public class IoticsJSONToTwinIT {
 
-    private TestRunner testRunner;
     private static final String CONTENT = """
+            {
+              "properties": [
                 {
-                  "properties": [
-                    {
-                      "key": "http://schema.org/identifier",
-                      "value": "1234567890",
-                      "type": "StringLiteral"
-                    }
-                  ],
-                  "feeds": [
-                    {
-                      "id": "status"
-                    }
-                  ]
+                  "key": "http://schema.org/identifier",
+                  "value": "1234567890",
+                  "type": "StringLiteral"
                 }
-                """;
-
+              ],
+              "feeds": [
+                {
+                  "id": "status"
+                }
+              ]
+            }
+            """;
+    private TestRunner testRunner;
 
     @BeforeEach
     public void init() throws Exception {

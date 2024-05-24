@@ -1,7 +1,6 @@
 package smartrics.iotics.nifi.processors;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.gson.Gson;
 import com.iotics.api.TwinID;
 import com.iotics.api.UpsertTwinResponse;
 import org.apache.nifi.util.MockFlowFile;
@@ -10,15 +9,14 @@ import org.apache.nifi.util.TestRunners;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import smartrics.iotics.identity.Identity;
-import smartrics.iotics.nifi.processors.objects.*;
+import smartrics.iotics.nifi.processors.objects.JsonTwin;
+import smartrics.iotics.nifi.processors.objects.MyProperty;
+import smartrics.iotics.nifi.processors.objects.MyTwinModel;
 import smartrics.iotics.nifi.services.BasicIoticsHostService;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;

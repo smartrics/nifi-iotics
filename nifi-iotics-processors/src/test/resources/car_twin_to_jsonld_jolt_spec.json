@@ -1,7 +1,7 @@
 [
   {
     "operation": "shift",
-    "spec":  {
+    "spec": {
       "*": "&"
     }
   },

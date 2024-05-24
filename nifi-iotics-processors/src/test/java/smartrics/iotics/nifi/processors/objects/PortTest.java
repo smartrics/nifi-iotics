@@ -2,16 +2,16 @@ package smartrics.iotics.nifi.processors.objects;
 
 import com.iotics.api.UpsertFeedWithMeta;
 import com.iotics.api.UpsertInputWithMeta;
-import org.checkerframework.checker.units.qual.A;
 import org.junit.jupiter.api.Test;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class PortTest {
 
@@ -66,10 +66,10 @@ public class PortTest {
     @Test
     void parseFromJson() {
         Port p = Port.fromJson("""
-                {
-                   "id": "feed1"
-                }
-            """);
+                    {
+                       "id": "feed1"
+                    }
+                """);
         assertNotNull(p.values());
         assertEquals("feed1", p.id());
 

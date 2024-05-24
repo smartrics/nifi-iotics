@@ -1,14 +1,13 @@
 package smartrics.iotics.nifi.processors.tools;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
-import static smartrics.iotics.nifi.processors.tools.JsonToProperty.*;
-
 import com.google.gson.JsonObject;
 import com.iotics.api.Property;
 import org.junit.jupiter.api.Test;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static smartrics.iotics.nifi.processors.tools.JsonToProperty.fromJson;
 
 
 class JsonToPropertyTest {

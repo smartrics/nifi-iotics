@@ -1,6 +1,7 @@
 package smartrics.iotics.nifi.processors.objects;
 
-import com.google.gson.*;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.iotics.api.DescribeTwinResponse;
 import com.iotics.api.SearchResponse;
 import com.iotics.api.TwinID;
@@ -30,16 +31,16 @@ public record MyTwinModel(String hostId, String id, List<MyProperty> properties,
         this(twinID.getHostId(), twinID.getId());
     }
 
-    public static MyTwinModel fromJson(String json) {
-        return gson.fromJson(json, MyTwinModel.class);
-    }
-
     public MyTwinModel(SearchResponse.TwinDetails twinDetails) {
         this(twinDetails.getTwinId().getHostId(),
                 twinDetails.getTwinId().getId(),
                 twinDetails.getPropertiesList().stream().map(MyProperty::factory).toList(),
                 twinDetails.getFeedsList().stream().map(Port::new).toList(),
                 twinDetails.getInputsList().stream().map(Port::new).toList());
+    }
+
+    public static MyTwinModel fromJson(String json) {
+        return gson.fromJson(json, MyTwinModel.class);
     }
 
     public Optional<MyProperty> findProperty(String key) {

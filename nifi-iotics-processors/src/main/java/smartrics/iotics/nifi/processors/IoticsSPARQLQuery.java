@@ -116,7 +116,7 @@ public class IoticsSPARQLQuery extends AbstractProcessor {
 
         final AtomicReference<String> queryRef = new AtomicReference<>(ff.getAttribute("sparql.query"));
 
-        if(queryRef.get() == null) {
+        if (queryRef.get() == null) {
             // Read the FlowFile content synchronously if not available in the attribute
             try {
                 session.read(ff, in -> {

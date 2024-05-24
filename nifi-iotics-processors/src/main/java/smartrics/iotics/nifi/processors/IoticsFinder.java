@@ -155,7 +155,7 @@ public class IoticsFinder extends AbstractProcessor {
 
         final CountDownLatch latch1 = new CountDownLatch(1);
         FlowFile flowFile = session.get();
-        if(flowFile == null) {
+        if (flowFile == null) {
             return;
         }
 

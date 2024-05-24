@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Random;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.is;
 import static smartrics.iotics.nifi.processors.IoticsControllerServiceFactory.injectIoticsHostService;
 
 public class IoticsPublisherIT {
@@ -72,9 +72,9 @@ public class IoticsPublisherIT {
     }
 
     private String newRandomContent(int el) {
-        Random r =  new Random();
+        Random r = new Random();
         List<MyTwinModel> twins = new ArrayList<>();
-        for(int i = 0; i<el; i++) {
+        for (int i = 0; i < el; i++) {
             String v = "" + r.nextBoolean();
             MyValue value = new MyValue(feed.values().getFirst().label(), null, null, v);
             Port f = new Port(feed.id(), List.of(), List.of(value), false);
