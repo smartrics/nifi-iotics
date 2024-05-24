@@ -64,9 +64,9 @@ import static smartrics.iotics.nifi.processors.Constants.*;
         Future enhancements: batch and batch sizes to improve performances
         """)
 @WritesAttributes({
-        @WritesAttribute(attribute = "followerTwinDid", description = "this follower's did"),
+        @WritesAttribute(attribute = "followerTwinId", description = "this follower's did"),
         @WritesAttribute(attribute = "hostId", description = "the host where the share came from"),
-        @WritesAttribute(attribute = "twinDid", description = "the twin where the share came from"),
+        @WritesAttribute(attribute = "twinId", description = "the twin where the share came from"),
         @WritesAttribute(attribute = "feedId", description = "the feed ID"),
         @WritesAttribute(attribute = "mimeType", description = "the content of the feed share"),
         @WritesAttribute(attribute = "occurredAt", description = "when the share occurredAt"),
@@ -239,9 +239,9 @@ public class IoticsFollower extends AbstractProcessor {
             FlowFile ff = session.create();
             try {
                 session.write(ff, out -> out.write(data.toByteArray()));
-                session.putAttribute(ff, "followerTwinDid", followerDid);
+                session.putAttribute(ff, "followerTwinId", followerDid);
                 session.putAttribute(ff, "hostId", followedFeedId.getHostId());
-                session.putAttribute(ff, "twinDid", followedFeedId.getTwinId());
+                session.putAttribute(ff, "twinId", followedFeedId.getTwinId());
                 session.putAttribute(ff, "feedId", followedFeedId.getId());
                 session.putAttribute(ff, "mimeType", feedData.getMime());
                 session.putAttribute(ff, "occurredAt", feedData.getOccurredAt().toString());
@@ -260,14 +260,14 @@ public class IoticsFollower extends AbstractProcessor {
 
         String followerDid = ev.followEvent().followerDid();
         MyTwinModel twin = ev.followEvent().twin();
-        String twinDid = twin.id();
+        String twinId = twin.id();
         String feedId = ev.port().id();
         ProcessSession session = ev.followEvent().session();
         ProcessContext context = ev.followEvent().context();
 
         FetchInterestRequest request = newFetchInterestRequest(followerDid, twin, ev.port());
 
-        getLogger().info("FOLLOW {}/{}", twinDid, feedId);
+        getLogger().info("FOLLOW {}/{}", twinId, feedId);
         Consumer<FetchInterestResponse> consumer = feedDataConsumer(followerDid, context, session);
         session.transfer(session.get(), ORIGINAL);
         this.ioticsApi.interestAPI().fetchInterests(request, new StreamObserver<>() {
@@ -278,7 +278,7 @@ public class IoticsFollower extends AbstractProcessor {
 
             @Override
             public void onError(Throwable throwable) {
-                getLogger().error("FOLLOW ERROR {}/{}", twinDid, feedId, throwable);
+                getLogger().error("FOLLOW ERROR {}/{}", twinId, feedId, throwable);
                 MyFlowFileFilter filter = new MyFlowFileFilter(ev);
                 List<FlowFile> found = session.get(filter);
                 if (throwable instanceof StatusRuntimeException
@@ -286,7 +286,7 @@ public class IoticsFollower extends AbstractProcessor {
                 ) {
                     // TODO seems the ff isn't found in unittest - check live deployment
                     if (!found.isEmpty()) {
-                        getLogger().info("RE-FOLLOW {}/{}", twinDid, feedId);
+                        getLogger().info("RE-FOLLOW {}/{}", twinId, feedId);
                         eventBus.post(ev.followEvent);
                     }
                 } else {
@@ -296,7 +296,7 @@ public class IoticsFollower extends AbstractProcessor {
 
             @Override
             public void onCompleted() {
-                getLogger().info("FOLLOW COMPLETE {}/{}", twinDid, feedId);
+                getLogger().info("FOLLOW COMPLETE {}/{}", twinId, feedId);
             }
         });
     }
@@ -325,11 +325,11 @@ public class IoticsFollower extends AbstractProcessor {
         @Override
         public FlowFileFilterResult filter(FlowFile flowFile) {
             String hostId = flowFile.getAttribute("hostId");
-            String twinDid = flowFile.getAttribute("twinDid");
+            String twinId = flowFile.getAttribute("twinId");
             String feedId = flowFile.getAttribute("feedId");
 
             if (hostId != null && hostId.equals(ev.followEvent().twin().hostId())) {
-                if (twinDid != null && twinDid.equals(ev.followEvent().twin().id())) {
+                if (twinId != null && twinId.equals(ev.followEvent().twin().id())) {
                     if (feedId != null && feedId.equals(ev.port().id())) {
                         return FlowFileFilter.FlowFileFilterResult.ACCEPT_AND_CONTINUE;
                     }
