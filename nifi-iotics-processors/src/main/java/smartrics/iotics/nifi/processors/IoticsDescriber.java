@@ -90,7 +90,6 @@ public class IoticsDescriber extends AbstractProcessor {
     @Override
     protected void init(final ProcessorInitializationContext context) {
         descriptors = new ArrayList<>();
-        descriptors.add(ID_PROP);
         descriptors.add(IOTICS_HOST_SERVICE);
         descriptors = Collections.unmodifiableList(descriptors);
 
