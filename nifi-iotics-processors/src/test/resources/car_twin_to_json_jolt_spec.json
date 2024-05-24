@@ -1,5 +1,11 @@
 [
   {
+    "operation": "modify-default-beta",
+    "spec": {
+      "Label": "=concat(@(1,Make),' ',@(1,Model),' ',@(1,ID))"
+    }
+  },
+  {
     "operation": "shift",
     "spec": {
       "ID": "properties[0].value",
@@ -9,7 +15,8 @@
       "Owner": "properties[4].value",
       "isOperational": "properties[5].value",
       "Comment": "properties[6].value",
-      "Units": "properties[7].value"
+      "Units": "properties[7].value",
+      "Label": "properties[10].value"
     }
   },
   {
@@ -62,6 +69,11 @@
           "key": "http://www.w3.org/2000/01/rdf-schema#label",
           "value": "A car",
           "type": "StringLiteral"
+        },
+        "11": {
+          "key": "http://www.w3.org/2000/01/rdf-schema#type",
+          "value": "http://schema.org/Car",
+          "type": "Uri"
         }
       }
     }

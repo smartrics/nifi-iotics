@@ -82,7 +82,7 @@ public class JoltTest {
         assertThat(prop.type(), is("Uri"));
 
         prop = properties.stream().filter(p -> p.key().equals("http://www.w3.org/2000/01/rdf-schema#label")).findFirst().orElseThrow();
-//        assertThat(prop.value(), is("Toyota Camry 1"));
+        assertThat(prop.value(), is("Toyota Camry 1"));
         assertThat(prop.type(), is("StringLiteral"));
 
         List<Port> inputs = m.inputs();
