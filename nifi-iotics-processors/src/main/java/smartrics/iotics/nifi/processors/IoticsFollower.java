@@ -65,7 +65,7 @@ import static smartrics.iotics.nifi.processors.Constants.*;
         """)
 @WritesAttributes({
         @WritesAttribute(attribute = "followerTwinDid", description = "this follower's did"),
-        @WritesAttribute(attribute = "hostDid", description = "the host where the share came from"),
+        @WritesAttribute(attribute = "hostId", description = "the host where the share came from"),
         @WritesAttribute(attribute = "twinDid", description = "the twin where the share came from"),
         @WritesAttribute(attribute = "feedId", description = "the feed ID"),
         @WritesAttribute(attribute = "mimeType", description = "the content of the feed share"),
@@ -240,7 +240,7 @@ public class IoticsFollower extends AbstractProcessor {
             try {
                 session.write(ff, out -> out.write(data.toByteArray()));
                 session.putAttribute(ff, "followerTwinDid", followerDid);
-                session.putAttribute(ff, "hostDid", followedFeedId.getHostId());
+                session.putAttribute(ff, "hostId", followedFeedId.getHostId());
                 session.putAttribute(ff, "twinDid", followedFeedId.getTwinId());
                 session.putAttribute(ff, "feedId", followedFeedId.getId());
                 session.putAttribute(ff, "mimeType", feedData.getMime());
@@ -309,7 +309,7 @@ public class IoticsFollower extends AbstractProcessor {
                 .setArgs(FetchInterestRequest.Arguments.newBuilder()
                         .setInterest(Interest.newBuilder()
                                 .setFollowedFeedId(FeedID.newBuilder()
-                                        .setHostId(twin.hostDid())
+                                        .setHostId(twin.hostId())
                                         .setTwinId(twin.id())
                                         .setId(port.id()).build())
                                 .setFollowerTwinId(TwinID.newBuilder()
@@ -324,11 +324,11 @@ public class IoticsFollower extends AbstractProcessor {
 
         @Override
         public FlowFileFilterResult filter(FlowFile flowFile) {
-            String hostDid = flowFile.getAttribute("hostDid");
+            String hostId = flowFile.getAttribute("hostId");
             String twinDid = flowFile.getAttribute("twinDid");
             String feedId = flowFile.getAttribute("feedId");
 
-            if (hostDid != null && hostDid.equals(ev.followEvent().twin().hostDid())) {
+            if (hostId != null && hostId.equals(ev.followEvent().twin().hostId())) {
                 if (twinDid != null && twinDid.equals(ev.followEvent().twin().id())) {
                     if (feedId != null && feedId.equals(ev.port().id())) {
                         return FlowFileFilter.FlowFileFilterResult.ACCEPT_AND_CONTINUE;

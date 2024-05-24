@@ -20,9 +20,9 @@ public class MyTwinModelTest {
         List<Port> feeds = List.of(new Port("feed1", List.of(), List.of(), true));
         List<Port> inputs = List.of(new Port("input1", List.of(), List.of(), true));
 
-        MyTwinModel myTwinModel = new MyTwinModel("hostDid1", "id1", properties, feeds, inputs);
+        MyTwinModel myTwinModel = new MyTwinModel("hostId1", "id1", properties, feeds, inputs);
 
-        assertEquals("hostDid1", myTwinModel.hostDid());
+        assertEquals("hostId1", myTwinModel.hostId());
         assertEquals("id1", myTwinModel.id());
         assertEquals(properties, myTwinModel.properties());
         assertEquals(feeds, myTwinModel.feeds());
@@ -37,7 +37,7 @@ public class MyTwinModelTest {
                 .build();
         MyTwinModel myTwinModel = new MyTwinModel(twinDetails);
 
-        assertEquals(twinDetails.getTwinId().getHostId(), myTwinModel.hostDid());
+        assertEquals(twinDetails.getTwinId().getHostId(), myTwinModel.hostId());
         assertEquals(twinDetails.getTwinId().getId(), myTwinModel.id());
     }
 
@@ -45,7 +45,7 @@ public class MyTwinModelTest {
     void testFindProperty() {
         MyProperty property = new MyProperty("key2", "value2", "", "", "");
         List<MyProperty> properties = List.of(property);
-        MyTwinModel myTwinModel = new MyTwinModel("hostDid2", "id2", properties, List.of(), List.of());
+        MyTwinModel myTwinModel = new MyTwinModel("hostId2", "id2", properties, List.of(), List.of());
 
         Optional<MyProperty> foundProperty = myTwinModel.findProperty("key2");
 
@@ -56,7 +56,7 @@ public class MyTwinModelTest {
     @Test
     void testFindPropertyNotFound() {
         List<MyProperty> properties = List.of(new MyProperty("key3", "value3", "", "", ""));
-        MyTwinModel myTwinModel = new MyTwinModel("hostDid3", "id3", properties, List.of(), List.of());
+        MyTwinModel myTwinModel = new MyTwinModel("hostId3", "id3", properties, List.of(), List.of());
 
         Optional<MyProperty> foundProperty = myTwinModel.findProperty("key4");
 
@@ -68,7 +68,7 @@ public class MyTwinModelTest {
         List<MyProperty> properties = List.of(new MyProperty("key5", "value5", "", "", ""));
         List<Port> feeds = List.of(new Port("feed5", null, null, true));
         List<Port> inputs = List.of(new Port("input5", null, null, true));
-        MyTwinModel myTwinModel = new MyTwinModel("hostDid5", "id5", properties, feeds, inputs);
+        MyTwinModel myTwinModel = new MyTwinModel("hostId5", "id5", properties, feeds, inputs);
 
         String json = myTwinModel.toJson();
         Gson gson = new Gson();
@@ -84,14 +84,14 @@ public class MyTwinModelTest {
         List<Port> inputs = List.of(new Port("input6", null, null, true));
 
         MyTwinModel myTwinModel = MyTwinModel.Builder.aMyTwinModel()
-                .withHostDid("hostDid6")
+                .withHostId("hostId6")
                 .withId("id6")
                 .withProperties(properties)
                 .withFeeds(feeds)
                 .withInputs(inputs)
                 .build();
 
-        assertEquals("hostDid6", myTwinModel.hostDid());
+        assertEquals("hostId6", myTwinModel.hostId());
         assertEquals("id6", myTwinModel.id());
         assertEquals(properties, myTwinModel.properties());
         assertEquals(feeds, myTwinModel.feeds());

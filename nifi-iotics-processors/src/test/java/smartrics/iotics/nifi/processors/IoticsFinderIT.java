@@ -82,7 +82,7 @@ public class IoticsFinderIT {
                 String json = new String(testRunner.getContentAsByteArray(mockFlowFile));
                 JsonObject root = JsonParser.parseString(json).getAsJsonObject();
                 assertTrue(root.has("id"));
-                assertTrue(root.has("hostDid"));
+                assertTrue(root.has("hostId"));
             });
         } else {
             throw new RuntimeException("Nothing back!");

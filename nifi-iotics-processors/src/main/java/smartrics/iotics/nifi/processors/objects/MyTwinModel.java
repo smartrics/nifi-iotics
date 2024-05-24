@@ -1,19 +1,34 @@
 package smartrics.iotics.nifi.processors.objects;
 
 import com.google.gson.*;
+import com.iotics.api.DescribeTwinResponse;
 import com.iotics.api.SearchResponse;
+import com.iotics.api.TwinID;
 
-import java.lang.reflect.Type;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
-public record MyTwinModel(String hostDid, String id, List<MyProperty> properties, List<Port> feeds, List<Port> inputs) {
+public record MyTwinModel(String hostId, String id, List<MyProperty> properties, List<Port> feeds, List<Port> inputs) {
 
     private static final Gson gson = new GsonBuilder()
             .registerTypeAdapter(MyTwinModel.class, new MyTwinModelDeserializer())
             .registerTypeAdapter(Port.class, new PortDeserializer())
             .create();
+
+    public MyTwinModel(String hostId, String id) {
+        this(hostId, id, List.of(), List.of(), List.of());
+    }
+
+    public MyTwinModel(DescribeTwinResponse.Payload payload) {
+        this(payload.getTwinId().getHostId(), payload.getTwinId().getId(),
+                payload.getResult().getPropertiesList().stream().map(MyProperty::factory).toList(),
+                payload.getResult().getFeedsList().stream().map(Port::factory).toList(),
+                payload.getResult().getInputsList().stream().map(Port::factory).toList());
+    }
+
+    public MyTwinModel(TwinID twinID) {
+        this(twinID.getHostId(), twinID.getId());
+    }
 
     public static MyTwinModel fromJson(String json) {
         return gson.fromJson(json, MyTwinModel.class);
@@ -37,7 +52,7 @@ public record MyTwinModel(String hostDid, String id, List<MyProperty> properties
     }
 
     public static final class Builder {
-        private String hostDid;
+        private String hostId;
         private String id;
         private List<MyProperty> properties;
         private List<Port> feeds;
@@ -50,8 +65,8 @@ public record MyTwinModel(String hostDid, String id, List<MyProperty> properties
             return new Builder();
         }
 
-        public Builder withHostDid(String hostDid) {
-            this.hostDid = hostDid;
+        public Builder withHostId(String hostId) {
+            this.hostId = hostId;
             return this;
         }
 
@@ -76,7 +91,7 @@ public record MyTwinModel(String hostDid, String id, List<MyProperty> properties
         }
 
         public MyTwinModel build() {
-            return new MyTwinModel(hostDid, id,
+            return new MyTwinModel(hostId, id,
                     Optional.ofNullable(properties).orElse(List.of()),
                     Optional.ofNullable(feeds).orElse(List.of()),
                     Optional.ofNullable(inputs).orElse(List.of())

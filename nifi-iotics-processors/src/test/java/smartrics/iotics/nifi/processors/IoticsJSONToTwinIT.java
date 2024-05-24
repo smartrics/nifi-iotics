@@ -128,13 +128,18 @@ public class IoticsJSONToTwinIT {
         //assert the input Q is empty and the flowfile is processed
         testRunner.assertQueueEmpty();
         List<MockFlowFile> original = testRunner.getFlowFilesForRelationship(Constants.ORIGINAL);
-        assertThat("Number of flowfiles in Original Queue is as expected (No of Flowfile = 1) ", original.size() == 1);
+        assertThat(original.size(), is(1));
 
-        MockFlowFile outputFlowfile = original.getFirst();
-        String outputFlowfileContent = new String(testRunner.getContentAsByteArray(outputFlowfile));
+        String outputFlowfileContent = new String(testRunner.getContentAsByteArray(original.getFirst()));
         Gson gson = new Gson();
         MyTwinModel myModel = gson.fromJson(outputFlowfileContent, MyTwinModel.class);
         assertThat(myModel.properties().getFirst().value(), is(equalTo("1234567890")));
+        System.out.println(outputFlowfileContent);
+
+        List<MockFlowFile> successResults = testRunner.getFlowFilesForRelationship(Constants.SUCCESS);
+        assertThat(successResults.size(), is(1));
+        outputFlowfileContent = new String(testRunner.getContentAsByteArray(successResults.getFirst()));
+        System.out.println(outputFlowfileContent);
     }
 
 }

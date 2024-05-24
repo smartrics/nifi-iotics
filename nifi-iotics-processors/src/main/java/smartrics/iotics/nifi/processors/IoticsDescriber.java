@@ -26,11 +26,9 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
-import com.google.protobuf.ByteString;
-import com.iotics.api.FeedData;
-import com.iotics.api.FeedID;
-import com.iotics.api.ShareFeedDataRequest;
-import com.iotics.api.ShareFeedDataResponse;
+import com.iotics.api.DescribeTwinRequest;
+import com.iotics.api.DescribeTwinResponse;
+import com.iotics.api.TwinID;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.components.PropertyDescriptor;
@@ -42,7 +40,6 @@ import smartrics.iotics.host.Builders;
 import smartrics.iotics.host.IoticsApi;
 import smartrics.iotics.identity.SimpleIdentityManager;
 import smartrics.iotics.nifi.processors.objects.MyTwinModel;
-import smartrics.iotics.nifi.processors.objects.Port;
 import smartrics.iotics.nifi.services.IoticsHostService;
 
 import java.io.InputStreamReader;
@@ -55,11 +52,11 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static smartrics.iotics.nifi.processors.Constants.*;
 
-@Tags({"IOTICS", "DIGITAL TWIN", "PUBLISH"})
+@Tags({"IOTICS", "DIGITAL TWIN", "DESCRIBE"})
 @CapabilityDescription("""
-Processor for IOTICS to publish data over one or more feeds.
-""")
-public class IoticsPublisher extends AbstractProcessor {
+        Processor for IOTICS to describe a twin.
+        """)
+public class IoticsDescriber extends AbstractProcessor {
 
     private static final Gson gson = new Gson();
     private final EventBus eventBus = new EventBus();
@@ -69,26 +66,25 @@ public class IoticsPublisher extends AbstractProcessor {
     private SimpleIdentityManager sim;
     private ExecutorService executor;
 
-    private static void transferFailure(StreamEvent event, Throwable t) {
-        String json = gson.toJson(new PublishFailure(event.myTwin(), t.getMessage()), new TypeToken<PublishFailure>() {
+    private static void transferFailure(DescribeEvent event, Throwable t) {
+        String json = gson.toJson(new DescribeFailure(event.myTwin(), t.getMessage()), new TypeToken<DescribeFailure>() {
         }.getType());
         transfer(event, json, FAILURE);
     }
 
-    private static void transferSuccess(StreamEvent event) {
-        String json = gson.toJson(event.myTwin(), new TypeToken<MyTwinModel>() {
-        }.getType());
+    private static void transferSuccess(DescribeEvent event, DescribeTwinResponse result) {
+        String json = gson.toJson(new MyTwinModel(result.getPayload()));
         transfer(event, json, SUCCESS);
     }
 
-    private static void transfer(StreamEvent event, String json, Relationship rel) {
+    private static void transfer(DescribeEvent event, String json, Relationship rel) {
         ProcessSession session = event.session();
         FlowFile ff = session.create(event.flowFile());
         session.write(ff, out -> {
             out.write(json.getBytes(StandardCharsets.UTF_8));
         });
         session.transfer(ff, rel);
-        event.latchFeeds().countDown();
+        event.latch().countDown();
     }
 
     @Override
@@ -105,10 +101,9 @@ public class IoticsPublisher extends AbstractProcessor {
         relationships = Collections.unmodifiableSet(relationships);
 
         eventBus.register(new EventListener() {
-
             @Subscribe
-            public void shareEvent(IoticsPublisher.StreamEvent event) {
-                shareFeed(event);
+            public void describeTwin(IoticsDescriber.DescribeEvent event) {
+                describe(event);
             }
         });
     }
@@ -133,7 +128,7 @@ public class IoticsPublisher extends AbstractProcessor {
 
         FlowFile flowFile = session.get();
         if (flowFile == null) {
-            getLogger().warn("no flowfile found - not publishing");
+            getLogger().warn("no flowfile found - no-op");
             return;
         }
 
@@ -156,15 +151,9 @@ public class IoticsPublisher extends AbstractProcessor {
                     MyTwinModel myTwin = gson.fromJson(jsonElement, type);
                     receivedTwins = Lists.newArrayList(myTwin);
                 }
-
-                // latch to # of streams, then pass in the output stream and dec in the
-                // onNext or onError to make sure we unblock when all sharing occurred
-
-                int feedsCount = receivedTwins.stream().mapToInt(myTwinModel -> myTwinModel.feeds().size()).sum();
-                latchFeedsRef.set(new CountDownLatch(feedsCount));
-
+                latchFeedsRef.set(new CountDownLatch(receivedTwins.size()));
                 receivedTwins.forEach(myTwin -> {
-                    myTwin.feeds().forEach(port -> eventBus.post(new StreamEvent(session, flowFile, latchFeedsRef.get(), myTwin, port)));
+                    eventBus.post(new DescribeEvent(session, flowFile, latchFeedsRef.get(), myTwin));
                 });
             } catch (Throwable t) {
                 throw new ProcessException("error handling flowfile", t);
@@ -179,19 +168,19 @@ public class IoticsPublisher extends AbstractProcessor {
         }
     }
 
-    private void shareFeed(StreamEvent event) {
+    private void describe(DescribeEvent event) {
         try {
-            Optional<ShareFeedDataRequest> request = newShareFeedDataRequest(event);
+            Optional<DescribeTwinRequest> request = newDescribeTwinRequest(event);
             if (request.isEmpty()) {
                 return;
             }
-            ListenableFuture<ShareFeedDataResponse> res = ioticsApi.feedAPIFuture().shareFeedData(request.get());
+            ListenableFuture<DescribeTwinResponse> res = ioticsApi.twinAPIFuture().describeTwin(request.get());
             Futures.addCallback(res, new FutureCallback<>() {
 
                 @Override
-                public void onSuccess(ShareFeedDataResponse result) {
+                public void onSuccess(DescribeTwinResponse result) {
                     try {
-                        transferSuccess(event);
+                        transferSuccess(event, result);
                     } catch (Exception e) {
                         transferFailure(event, e);
                     }
@@ -207,36 +196,22 @@ public class IoticsPublisher extends AbstractProcessor {
         }
     }
 
-    private Optional<ShareFeedDataRequest> newShareFeedDataRequest(StreamEvent event) {
-        if (event.port().valuesAsJson().keySet().isEmpty()) {
-            return Optional.empty();
-        }
-        Gson g = new Gson();
-        String jsonString = g.toJson(event.port().valuesAsJson());
-        return Optional.of(ShareFeedDataRequest.newBuilder()
+    private Optional<DescribeTwinRequest> newDescribeTwinRequest(DescribeEvent event) {
+        return Optional.of(DescribeTwinRequest.newBuilder()
                 .setHeaders(Builders.newHeadersBuilder(sim.agentIdentity()))
-                .setArgs(ShareFeedDataRequest.Arguments.newBuilder()
-                        .setFeedId(FeedID.newBuilder()
-                                .setTwinId(event.myTwin().id())
-                                .setId(event.port().id())
+                .setArgs(DescribeTwinRequest.Arguments.newBuilder()
+                        .setTwinId(TwinID.newBuilder()
+                                .setId(event.myTwin().id())
+                                .setHostId(event.myTwin().hostId())
                                 .build())
-                        .build())
-                .setPayload(ShareFeedDataRequest.Payload.newBuilder()
-                        .setSample(FeedData.newBuilder()
-                                .setData(ByteString.copyFromUtf8(jsonString)))
                         .build())
                 .build());
     }
 
-    private String makeCacheKey(StreamEvent event) {
-        return event.myTwin().hostId() + "/" + event.myTwin().id() + "/" + event.port().id();
+    public record DescribeEvent(ProcessSession session, FlowFile flowFile, CountDownLatch latch, MyTwinModel myTwin) {
     }
 
-    public record StreamEvent(ProcessSession session, FlowFile flowFile, CountDownLatch latchFeeds, MyTwinModel myTwin,
-                              Port port) {
-    }
-
-    public record PublishFailure(MyTwinModel twin, String error) {
+    public record DescribeFailure(MyTwinModel twin, String error) {
 
     }
 }

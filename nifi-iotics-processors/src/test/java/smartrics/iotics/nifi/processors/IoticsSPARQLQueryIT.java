@@ -20,26 +20,15 @@ import static org.hamcrest.Matchers.is;
 import static smartrics.iotics.nifi.processors.IoticsControllerServiceFactory.injectIoticsHostService;
 
 public class IoticsSPARQLQueryIT {
-//    public static final String QUERY = """
-//            PREFIX schema: <http://schema.org/>
-//            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-//
-//            SELECT (COUNT(?car) AS ?numberOfCars)
-//            WHERE {
-//              ?car a schema:Car .
-//            }
-//            """;
-
     public static final String QUERY = """
-PREFIX schema: <http://schema.org/>
-PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX schema: <http://schema.org/>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
-SELECT ?car ?property ?value
-WHERE {
-       rdfs:label "A car" ;
-       ?property ?value .
-}
-""";
+            SELECT (COUNT(?car) AS ?numberOfCars)
+            WHERE {
+              ?car a schema:Car .
+            }
+            """;
 
     private TestRunner testRunner;
 

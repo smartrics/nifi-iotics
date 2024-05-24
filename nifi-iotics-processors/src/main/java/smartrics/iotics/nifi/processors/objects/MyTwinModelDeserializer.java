@@ -12,7 +12,7 @@ public class MyTwinModelDeserializer implements JsonDeserializer<MyTwinModel> {
     public MyTwinModel deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
         JsonObject jsonObject = json.getAsJsonObject();
 
-        String hostDid = Optional.ofNullable(jsonObject.get("hostDid")).map(JsonElement::getAsString).orElse(null);
+        String hostId = Optional.ofNullable(jsonObject.get("hostId")).map(JsonElement::getAsString).orElse(null);
         String id = Optional.ofNullable(jsonObject.get("id")).map(JsonElement::getAsString).orElse(null);
 
         List<MyProperty> properties = (List<MyProperty>) Optional.ofNullable(jsonObject.get("properties"))
@@ -30,6 +30,6 @@ public class MyTwinModelDeserializer implements JsonDeserializer<MyTwinModel> {
                 .map(e -> context.deserialize(e, new TypeToken<List<Port>>(){}.getType()))
                 .orElse(List.of());
 
-        return new MyTwinModel(hostDid, id, properties, feeds, inputs);
+        return new MyTwinModel(hostId, id, properties, feeds, inputs);
     }
 }

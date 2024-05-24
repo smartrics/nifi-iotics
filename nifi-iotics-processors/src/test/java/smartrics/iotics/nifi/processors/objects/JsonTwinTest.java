@@ -52,7 +52,7 @@ class JsonTwinTest {
     @Test
     void addsLangPropertyWithStringType() {
         List<MyProperty> props = List.of(new MyProperty("http://schema.org/foo", LangLiteral.newBuilder().setLang("en").setValue("1").build()));
-        twin = newTwin(MyTwinModel.Builder.aMyTwinModel().withProperties(props).withId("id").withHostDid("hid").build());
+        twin = newTwin(MyTwinModel.Builder.aMyTwinModel().withProperties(props).withId("id").withHostId("hid").build());
         LangLiteral literal = findLang(twin, "http://schema.org/foo", "en").orElseThrow().getLangLiteralValue();
         assertThat(literal.getValue(), is(equalTo("1")));
         assertThat(literal.getLang(), is(equalTo("en")));
@@ -61,7 +61,7 @@ class JsonTwinTest {
     @Test
     void addsStringProperty() {
         List<MyProperty> props = List.of(new MyProperty("http://schema.org/foo", Literal.newBuilder().setDataType("string").setValue("bar").build()));
-        twin = newTwin(MyTwinModel.Builder.aMyTwinModel().withId("id").withHostDid("hid").withProperties(props).build());
+        twin = newTwin(MyTwinModel.Builder.aMyTwinModel().withId("id").withHostId("hid").withProperties(props).build());
         Literal literal = find(twin, "http://schema.org/foo", "string").orElseThrow().getLiteralValue();
         assertThat(literal.getValue(), is(equalTo("bar")));
         assertThat(literal.getDataType(), is(equalTo("string")));
@@ -70,7 +70,7 @@ class JsonTwinTest {
     @Test
     void addUriProperty() {
         List<MyProperty> props = List.of(new MyProperty("http://schema.org/foo", Uri.newBuilder().setValue("http://schema.org/Car").build()));
-        twin = newTwin(MyTwinModel.Builder.aMyTwinModel().withId("id").withHostDid("hid").withProperties(props).build());
+        twin = newTwin(MyTwinModel.Builder.aMyTwinModel().withId("id").withHostId("hid").withProperties(props).build());
         Uri uri = findURI(twin, "http://schema.org/foo").orElseThrow().getUriValue();
         assertThat(uri.getValue(), is(equalTo("http://schema.org/Car")));
     }
@@ -79,7 +79,7 @@ class JsonTwinTest {
     void generatesShareRequest() {
         MyValue myValue = new MyValue("l", "dt", "c");
         Port myFeed = new Port("feedId", List.of(), List.of(myValue), false);
-        MyTwinModel model = MyTwinModel.Builder.aMyTwinModel().withId("id").withHostDid("hid")
+        MyTwinModel model = MyTwinModel.Builder.aMyTwinModel().withId("id").withHostId("hid")
                 .withFeeds(List.of(myFeed))
                 .build();
         twin = newTwin(model);

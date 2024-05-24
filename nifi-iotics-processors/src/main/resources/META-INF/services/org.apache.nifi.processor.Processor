@@ -18,3 +18,4 @@ smartrics.iotics.nifi.processors.IoticsSPARQLQuery
 smartrics.iotics.nifi.processors.IoticsFollower
 smartrics.iotics.nifi.processors.IoticsFinder
 smartrics.iotics.nifi.processors.IoticsPublisher
+smartrics.iotics.nifi.processors.IoticsDescriber

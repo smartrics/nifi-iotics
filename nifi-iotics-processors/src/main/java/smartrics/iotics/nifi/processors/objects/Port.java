@@ -3,17 +3,13 @@ package smartrics.iotics.nifi.processors.objects;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
-import com.iotics.api.SearchResponse;
-import com.iotics.api.UpsertFeedWithMeta;
-import com.iotics.api.UpsertInputWithMeta;
+import com.iotics.api.*;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
-import static smartrics.iotics.nifi.processors.objects.MyProperty.factory;
 
 public class Port {
 
@@ -52,16 +48,16 @@ public class Port {
         requestBuilder
                 .setId(port.id)
                 .setStoreLast(port.storeLast);
-        port.properties.forEach(p -> requestBuilder.addProperties(factory(p)));
-        port.values.forEach(v -> requestBuilder.addValues(factory(v)));
+        port.properties.forEach(p -> requestBuilder.addProperties(MyProperty.factory(p)));
+        port.values.forEach(v -> requestBuilder.addValues(MyProperty.factory(v)));
         return requestBuilder.build();
     }
 
     public static UpsertInputWithMeta inputsFactory(Port port) {
         UpsertInputWithMeta.Builder requestBuilder = UpsertInputWithMeta.newBuilder();
         requestBuilder.setId(port.id);
-        port.properties.forEach(p -> requestBuilder.addProperties(factory(p)));
-        port.values.forEach(v -> requestBuilder.addValues(factory(v)));
+        port.properties.forEach(p -> requestBuilder.addProperties(MyProperty.factory(p)));
+        port.values.forEach(v -> requestBuilder.addValues(MyProperty.factory(v)));
         return requestBuilder.build();
     }
 
@@ -119,5 +115,15 @@ public class Port {
         return "Port{" +
                 "id='" + id + '\'' +
                 '}';
+    }
+
+    public static Port factory(FeedMeta feedMeta) {
+        return new Port(feedMeta.getFeedId().getId(),
+                List.of(),List.of(), feedMeta.getStoreLast());
+    }
+
+    public static Port factory(InputMeta feedMeta) {
+        return new Port(feedMeta.getInputId().getId(),
+                List.of(),List.of(), false);
     }
 }
