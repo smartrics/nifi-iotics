@@ -55,6 +55,11 @@
             <artifactId>iotics-identity-core</artifactId>
             <version>${iotics4j.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.nifi</groupId>
+            <artifactId>nifi-mock</artifactId>
+            <version>${nifi.version}</version>
+        </dependency>
     </dependencies>
 
 </project>

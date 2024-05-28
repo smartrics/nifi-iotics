@@ -10,41 +10,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.time.Duration;
 
-public class Iotics {
-
-    private final SimpleIdentityManager sim;
-    private final IoticsApi api;
-    private final Configuration configuration;
-    private final HttpServiceRegistry registry;
-    private final HostEndpoints endpoints;
-
-    public Iotics(SimpleIdentityManager sim, IoticsApi api, Configuration configuration, HttpServiceRegistry registry, HostEndpoints endpoints) {
-        this.sim = sim;
-        this.api = api;
-        this.configuration = configuration;
-        this.registry = registry;
-        this.endpoints = endpoints;
-    }
-
-    public SimpleIdentityManager sim() {
-        return sim;
-    }
-
-    public IoticsApi api() {
-        return api;
-    }
-
-    public Configuration configuration() {
-        return configuration;
-    }
-
-    public HttpServiceRegistry registry() {
-        return registry;
-    }
-
-    public HostEndpoints endpoints() {
-        return endpoints;
-    }
+public record Iotics(SimpleIdentityManager sim, IoticsApi api, Configuration configuration,
+                     HttpServiceRegistry registry, HostEndpoints endpoints) {
 
     public final static class Builder {
         private SimpleIdentityManager sim;
