@@ -82,6 +82,10 @@ public record Iotics(IoticsFactory componentsFactory, SimpleIdentityManager sim,
                     throw new IllegalArgumentException("invalid configuration: can't access host endpoints via hostDNS:" + configuration.hostDNS(), ioe);
                 }
             }
+            if(ioticsFactory == null) {
+                ioticsFactory = new IoticsFactory() {
+                };
+            }
 
             if (sim == null) {
                 try {

@@ -12,6 +12,14 @@ public record Configuration(String seed, String userKey, String agentKey,
                             Integer apiExecutorThreads, String idLibPath) {
 
 
+    private static final String DEFAULT_ID_LIB_PATH = "./lib";
+
+    public Configuration(String seed, String userKey, String agentKey,
+                         String hostDNS, Integer tokenDuration,
+                         Integer apiExecutorThreads) {
+        this(seed, userKey, agentKey, hostDNS, tokenDuration, apiExecutorThreads, Configuration.DEFAULT_ID_LIB_PATH);
+    }
+
     public Configuration(Map<String, String> conf) {
         this(
                 conf.get(SEED.getName()),
@@ -20,7 +28,7 @@ public record Configuration(String seed, String userKey, String agentKey,
                 conf.get(HOST_DNS.getName()),
                 Integer.parseInt(conf.get(TOKEN_DURATION.getName())),
                 Integer.parseInt(Optional.ofNullable(conf.get(API_EXECUTOR_THREADS.getName())).orElse("16")),
-                conf.get(ID_LIB_PATH.getName())
+                Optional.ofNullable(conf.get(ID_LIB_PATH.getName())).orElse(Configuration.DEFAULT_ID_LIB_PATH)
         );
     }
 
@@ -32,7 +40,7 @@ public record Configuration(String seed, String userKey, String agentKey,
                 context.getProperty(HOST_DNS).getValue(),
                 context.getProperty(TOKEN_DURATION).asInteger(),
                 context.getProperty(API_EXECUTOR_THREADS).asInteger(),
-                context.getProperty(ID_LIB_PATH).getValue()
+                Optional.ofNullable(context.getProperty(ID_LIB_PATH).getValue()).orElse(Configuration.DEFAULT_ID_LIB_PATH)
         );
     }
 

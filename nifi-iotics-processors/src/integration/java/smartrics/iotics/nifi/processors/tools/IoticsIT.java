@@ -40,7 +40,9 @@ class IoticsIT {
 
     @Test
     void validToken() throws Exception {
-        Iotics iotics = Iotics.Builder.newBuilder().withConfiguration(newConfiguration(3)).build();
+        Iotics iotics = Iotics.Builder.newBuilder()
+                .withConfiguration(newConfiguration(3))
+                .build();
         for(int i = 0; i < 10; i++) {
             Thread.sleep(1000);
             System.out.println("Iteration " + i);
