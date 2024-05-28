@@ -9,7 +9,7 @@ import static smartrics.iotics.nifi.services.BasicIoticsHostService.*;
 
 public record Configuration(String seed, String userKey, String agentKey,
                             String hostDNS, Integer tokenDuration,
-                            Integer apiExecutorThreads) {
+                            Integer apiExecutorThreads, String idLibPath) {
 
 
     public Configuration(Map<String, String> conf) {
@@ -19,7 +19,8 @@ public record Configuration(String seed, String userKey, String agentKey,
                 conf.get(AGENT_KEY.getName()),
                 conf.get(HOST_DNS.getName()),
                 Integer.parseInt(conf.get(TOKEN_DURATION.getName())),
-                Integer.parseInt(Optional.ofNullable(conf.get(API_EXECUTOR_THREADS.getName())).orElse("16"))
+                Integer.parseInt(Optional.ofNullable(conf.get(API_EXECUTOR_THREADS.getName())).orElse("16")),
+                conf.get(ID_LIB_PATH.getName())
         );
     }
 
@@ -30,7 +31,8 @@ public record Configuration(String seed, String userKey, String agentKey,
                 context.getProperty(AGENT_KEY).getValue(),
                 context.getProperty(HOST_DNS).getValue(),
                 context.getProperty(TOKEN_DURATION).asInteger(),
-                context.getProperty(API_EXECUTOR_THREADS).asInteger()
+                context.getProperty(API_EXECUTOR_THREADS).asInteger(),
+                context.getProperty(ID_LIB_PATH).getValue()
         );
     }
 

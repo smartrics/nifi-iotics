@@ -10,8 +10,14 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.time.Duration;
 
-public record Iotics(SimpleIdentityManager sim, IoticsApi api, Configuration configuration,
+public record Iotics(IoticsFactory componentsFactory, SimpleIdentityManager sim, IoticsApi api, Configuration configuration,
                      HttpServiceRegistry registry, HostEndpoints endpoints) {
+
+    public Iotics(SimpleIdentityManager sim, IoticsApi api, Configuration configuration,
+                  HttpServiceRegistry registry, HostEndpoints endpoints) {
+        this(new IoticsFactory() {
+        }, sim, api, configuration, registry, endpoints);
+    }
 
     public final static class Builder {
         private SimpleIdentityManager sim;
@@ -19,6 +25,7 @@ public record Iotics(SimpleIdentityManager sim, IoticsApi api, Configuration con
         private Configuration configuration;
         private HttpServiceRegistry registry;
         private HostEndpoints endpoints;
+        private IoticsFactory ioticsFactory;
 
         private Builder() {
         }
@@ -34,6 +41,11 @@ public record Iotics(SimpleIdentityManager sim, IoticsApi api, Configuration con
 
         public Builder withApi(IoticsApi api) {
             this.api = api;
+            return this;
+        }
+
+        public Builder withIoticsFactory(IoticsFactory ioticsFactory) {
+            this.ioticsFactory = ioticsFactory;
             return this;
         }
 
@@ -73,14 +85,14 @@ public record Iotics(SimpleIdentityManager sim, IoticsApi api, Configuration con
 
             if (sim == null) {
                 try {
-                    sim = Tools.newSimpleIdentityManager(configuration, endpoints.resolver());
+                    sim = ioticsFactory.newSimpleIdentityManager(configuration, endpoints.resolver());
                 } catch (FileNotFoundException e) {
                     throw new IllegalArgumentException("unable to load library", e);
                 }
             }
             if (api == null) {
                 try {
-                    api = Tools.newIoticsApi(sim, endpoints.grpc(), Duration.ofSeconds(configuration.tokenDuration()));
+                    api = ioticsFactory.newIoticsApi(sim, endpoints.grpc(), Duration.ofSeconds(configuration.tokenDuration()));
                 } catch (IOException e) {
                     throw new IllegalArgumentException("unable to instantiate api", e);
                 }

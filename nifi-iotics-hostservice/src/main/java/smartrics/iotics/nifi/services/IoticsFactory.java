@@ -16,16 +16,16 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.time.Duration;
 
-public final class Tools {
+public interface IoticsFactory {
 
     @NotNull
-    public static IoticsApi newIoticsApi(SimpleIdentityManager sim, String grpcEndpoint, Duration tokenDuration) throws IOException {
+    default IoticsApi newIoticsApi(SimpleIdentityManager sim, String grpcEndpoint, Duration tokenDuration) throws IOException {
         HostConnection connection = new HostConnectionImpl(grpcEndpoint, sim, tokenDuration);
         return new IoticsApiImpl(connection);
     }
 
     @NotNull
-    public static SimpleIdentityManager newSimpleIdentityManager(Configuration conf, String resolver) throws FileNotFoundException {
+    default SimpleIdentityManager newSimpleIdentityManager(Configuration conf, String resolver) throws FileNotFoundException {
         SimpleConfig agentConf = new SimpleConfig(conf.seed(), conf.agentKey(), "#id-" + conf.agentKey().hashCode());
         SimpleConfig userConf = new SimpleConfig(conf.seed(), conf.userKey(), "#id-" + conf.userKey().hashCode());
         OsLibraryPathResolver pathResolver = new OsLibraryPathResolver() {

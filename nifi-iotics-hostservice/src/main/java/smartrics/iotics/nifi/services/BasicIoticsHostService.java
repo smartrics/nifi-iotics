@@ -16,6 +16,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class BasicIoticsHostService extends AbstractControllerService implements IoticsHostService {
+    public static final PropertyDescriptor ID_LIB_PATH = new org.apache.nifi.components.PropertyDescriptor
+            .Builder().name("idLibPath")
+            .displayName("Identity lib path")
+            .description("Path in the local filesystem where the identity lib binaries are stored")
+            .required(true)
+            .defaultValue("./lib")
+            .addValidator(StandardValidators.NON_BLANK_VALIDATOR)
+            .build();
+
     public static final PropertyDescriptor SEED = new org.apache.nifi.components.PropertyDescriptor
             .Builder().name("seed")
             .displayName("Seed")
@@ -55,7 +64,7 @@ public class BasicIoticsHostService extends AbstractControllerService implements
             .description("""
                     The gRPC api client requires an executor to dispatch threads for async ops.
                     This service uses a newFixedThreadPool executor and this setting decides how many threads this executor is configured with.
-                                """)
+                    """)
             .required(true)
             .defaultValue("16")
             .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
