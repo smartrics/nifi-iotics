@@ -20,7 +20,7 @@
     <parent>
         <groupId>smartrics.iotics.nifi</groupId>
         <artifactId>nifi-iotics</artifactId>
-        <version>1.0-SNAPSHOT</version>
+        <version>1.0</version>
     </parent>
 
     <artifactId>nifi-iotics-processors</artifactId>
@@ -29,7 +29,6 @@
 
     <properties>
         <nifi.version>2.0.0-M2</nifi.version>
-        <iotics.nifi.version>1.0-SNAPSHOT</iotics.nifi.version>
         <iotics4j.version>1.2</iotics4j.version>
         <maven-test-plugins.version>3.2.5</maven-test-plugins.version>
     </properties>
@@ -72,7 +71,7 @@
         <dependency>
             <groupId>smartrics.iotics.nifi</groupId>
             <artifactId>nifi-iotics-hostservice</artifactId>
-            <version>${iotics.nifi.version}</version>
+            <version>1.0</version>
         </dependency>
         <dependency>
             <groupId>smartrics.iotics</groupId>
