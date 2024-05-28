@@ -19,11 +19,11 @@
     <parent>
         <groupId>smartrics.iotics.nifi</groupId>
         <artifactId>nifi-iotics</artifactId>
-        <version>1.0</version>
+        <version>1.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>nifi-iotics-nar</artifactId>
-    <version>1.0</version>
+    <version>1.1-SNAPSHOT</version>
     <packaging>nar</packaging>
     <name>${project.groupId}:${project.artifactId}</name>
 
@@ -36,12 +36,12 @@
         <dependency>
             <groupId>smartrics.iotics.nifi</groupId>
             <artifactId>nifi-iotics-processors</artifactId>
-            <version>1.0</version>
+            <version>1.1-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>smartrics.iotics.nifi</groupId>
             <artifactId>nifi-iotics-hostservice</artifactId>
-            <version>1.0</version>
+            <version>1.1-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.nifi</groupId>
