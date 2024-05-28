@@ -30,7 +30,7 @@ public final class Tools {
         SimpleConfig userConf = new SimpleConfig(conf.seed(), conf.userKey(), "#id-" + conf.userKey().hashCode());
         OsLibraryPathResolver pathResolver = new OsLibraryPathResolver() {
         };
-        SdkApi api = new JnaSdkApiInitialiser("./lib", pathResolver).get();
+        SdkApi api = new JnaSdkApiInitialiser(conf.idLibPath(), pathResolver).get();
         return SimpleIdentityManager.Builder.anIdentityManager()
                 .withSimpleIdentity(new SimpleIdentityImpl(api, resolver, userConf.seed(), agentConf.seed()))
                 .withAgentKeyID(agentConf.keyId())

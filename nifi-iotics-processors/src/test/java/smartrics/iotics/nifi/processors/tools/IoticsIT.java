@@ -20,7 +20,7 @@ import java.util.concurrent.Executors;
 
 import static smartrics.iotics.nifi.services.BasicIoticsHostService.TOKEN_DURATION;
 
-class IoticsTest {
+class IoticsIT {
 
     private static Configuration newConfiguration(int tokenDuration) throws IOException {
         Map<String, String> conf = HashMap.newHashMap(5);
