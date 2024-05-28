@@ -129,7 +129,7 @@ class JsonLdTwinTest {
 
     @Test
     void readsFullTwin() throws IOException {
-        String content = Files.readString(Path.of("src\\test\\resources\\car_twin_ld.json"));
+        String content = Files.readString(Path.of("src/test/resources/car_twin_ld.json"));
         Object jsonObject = JsonUtils.fromString(content);
         JsonLdOptions options = new JsonLdOptions();
         // Convert JSON-LD to RDF triples

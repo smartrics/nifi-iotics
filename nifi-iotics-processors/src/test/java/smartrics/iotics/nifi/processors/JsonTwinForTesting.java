@@ -25,7 +25,7 @@ public class JsonTwinForTesting extends JsonTwin {
 
     public static JsonTwinForTesting makeMyTwin(BasicIoticsHostService service) throws Exception {
         CountDownLatch latch = new CountDownLatch(1);
-        String content = Files.readString(Path.of("src\\test\\resources\\twin_with_feed.json"));
+        String content = Files.readString(Path.of("src/test/resources/twin_with_feed.json"));
         MyTwinModel myTwin = MyTwinModel.fromJson(content);
         Identity twinIdentity = service.getSimpleIdentityManager().newTwinIdentityWithControlDelegation(myTwin.id(), "#master");
         JsonTwinForTesting myTwinMaker = new JsonTwinForTesting(service.getIoticsApi(), service.getSimpleIdentityManager(), twinIdentity, myTwin);

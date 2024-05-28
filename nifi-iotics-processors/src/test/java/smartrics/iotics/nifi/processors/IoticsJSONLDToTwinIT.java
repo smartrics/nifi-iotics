@@ -90,7 +90,7 @@ public class IoticsJSONLDToTwinIT {
 
     @Test
     public void successTransitionGetsTheDID() throws IOException {
-        String content = Files.readString(Path.of("src\\test\\resources\\car_twin_ld.json"));
+        String content = Files.readString(Path.of("src/test/resources/car_twin_ld.json"));
         testRunner.enqueue(content);
         testRunner.run(1);
         //assert the input Q is empty and the flowfile is processed
@@ -111,7 +111,7 @@ public class IoticsJSONLDToTwinIT {
 
     @Test
     public void originalTransitionRetrievesTheInputFlowFile() throws IOException {
-        String content = Files.readString(Path.of("src\\test\\resources\\car_twin_ld.json"));
+        String content = Files.readString(Path.of("src/test/resources/car_twin_ld.json"));
         testRunner.enqueue(content);
         testRunner.run(1);
         //assert the input Q is empty and the flowfile is processed

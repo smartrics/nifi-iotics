@@ -30,7 +30,7 @@ class IoticsDescriberIT {
     public void init() throws Exception {
         testRunner = TestRunners.newTestRunner(IoticsDescriber.class);
         BasicIoticsHostService service = injectIoticsHostService(testRunner);
-        String content = Files.readString(Path.of("src\\test\\resources\\car_twin.json"));
+        String content = Files.readString(Path.of("src/test/resources/car_twin.json"));
         MyTwinModel model = MyTwinModel.fromJson(content);
         MyProperty idProp = model.findProperty("http://schema.org/identifier").orElseThrow();
         Identity id = service.getSimpleIdentityManager().newTwinIdentity(idProp.value(), "#master");
