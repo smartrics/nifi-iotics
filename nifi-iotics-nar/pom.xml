@@ -20,6 +20,7 @@
         <groupId>smartrics.iotics.nifi</groupId>
         <artifactId>nifi-iotics</artifactId>
         <version>1.1-SNAPSHOT</version>
+        <relativePath>..</relativePath>
     </parent>
 
     <artifactId>nifi-iotics-nar</artifactId>

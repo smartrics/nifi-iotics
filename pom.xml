@@ -32,6 +32,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <google.gson.version>2.10.1</google.gson.version>
         <google.guava.version>33.1.0-android</google.guava.version>
+        <skipITs>true</skipITs>    
     </properties>
 
     <licenses>
@@ -75,7 +76,27 @@
                     <generateBackupPoms>false</generateBackupPoms>
                 </configuration>
             </plugin>
-        </plugins>        <pluginManagement>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <id>add-integration-test-source-as-test-sources</id>
+                        <phase>generate-test-sources</phase>
+                        <goals>
+                            <goal>add-test-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>src/integrationTest/java</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>        
+        <pluginManagement>
             <plugins>
                 <!-- https://mvnrepository.com/artifact/org.codehaus.mojo/versions-maven-plugin -->
                 <plugin>
@@ -97,6 +118,23 @@
                         <useModulePath>true</useModulePath>
                         <forkCount>3</forkCount>
                         <reuseForks>true</reuseForks>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                    <version>3.2.5</version>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>integration-test</goal>
+                                <goal>verify</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                    <configuration>
+                        <testSourceDirectory>src/integration/java</testSourceDirectory>
+                        <skipITs>${skipITs}</skipITs>    
                     </configuration>
                 </plugin>
             </plugins>
