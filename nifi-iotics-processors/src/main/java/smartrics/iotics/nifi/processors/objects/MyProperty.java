@@ -23,6 +23,9 @@ public record MyProperty(String key, String value, String type, String lang, Str
     }
 
     public static MyProperty factory(Property property) {
+        if(property == null){
+            throw new IllegalArgumentException("null property");
+        }
         String key = property.getKey();
         if (property.hasLiteralValue())
             return new MyProperty(key, property.getLiteralValue());
@@ -32,7 +35,7 @@ public record MyProperty(String key, String value, String type, String lang, Str
             return new MyProperty(key, property.getUriValue());
         if (property.hasStringLiteralValue())
             return new MyProperty(key, property.getStringLiteralValue());
-        throw new IllegalArgumentException("invalid property type: " + property);
+        throw new IllegalArgumentException("invalid property type, missing value: " + property.getKey());
     }
 
     public static Value factory(MyValue val) {
@@ -45,8 +48,15 @@ public record MyProperty(String key, String value, String type, String lang, Str
 
     public static Property factory(MyProperty prop) {
         String key = prop.key();
+        if(key == null) {
+            throw new IllegalArgumentException("invalid property: missing key. " + prop);
+        }
         Property.Builder pBuilder = Property.newBuilder().setKey(key);
         String objValue = prop.value();
+        if(objValue == null) {
+            throw new IllegalArgumentException("invalid property: missing value. " + prop);
+        }
+
         switch (prop.type()) {
             case "Uri" -> pBuilder.setUriValue(Uri.newBuilder().setValue(prop.value()).build());
             case "StringLiteral" -> pBuilder.setStringLiteralValue(StringLiteral.newBuilder()

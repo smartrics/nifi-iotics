@@ -22,6 +22,8 @@ import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import smartrics.iotics.nifi.processors.objects.MyTwinModel;
 
 import java.io.IOException;
@@ -35,6 +37,8 @@ import static smartrics.iotics.nifi.processors.Constants.ID_PROP;
 import static smartrics.iotics.nifi.processors.IoticsControllerServiceFactory.injectIoticsHostService;
 
 public class IoticsJSONToTwinIT {
+
+    private static final Gson GSON = new Gson();
 
     private static final String CONTENT = """
             {
@@ -52,6 +56,74 @@ public class IoticsJSONToTwinIT {
               ]
             }
             """;
+    private static final String INVALID_JSON = """
+            { "properties": [ {
+              "key": "http://data.iotics.com/nifi/isOperational",
+              "value": "true",
+              "type": "Literal",
+              "dataType": "boolean"
+            }, }""";
+    private static final String NULL_VALUE_PROP_JSON = """
+            { "properties": [ {
+              "key": "http://data.iotics.com/nifi/isOperational",
+              "value": null,
+              "type": "Literal",
+              "dataType": "boolean"
+            } }""";
+
+    private static final String MISSING_VALUE_PROP_JSON = """
+            { "properties": [ {
+              "key": "http://data.iotics.com/nifi/isOperational",
+              "type": "Literal",
+              "dataType": "boolean"
+            } }""";
+
+    private static final String EMPTY_KEY_PROP_JSON = """
+            { "properties": [ {
+              "key": "",
+              "value": "something",
+              "type": "Literal",
+              "dataType": "boolean"
+            } }""";
+
+    private static final String MISSING_KEY_PROP_JSON = """
+            { "properties": [ {
+              "value": "something",
+              "type": "Literal",
+              "dataType": "boolean"
+            } }""";
+
+    private static final String NULL_KEY_PROP_JSON = """
+            { "properties": [ {
+              "key": null,
+              "value": "something",
+              "type": "Literal",
+              "dataType": "boolean"
+            } }""";
+
+    private static final String MISSING_TYPE_PROP_JSON = """
+            { "properties": [ {
+              "key": "http://a.key",
+              "value": "something",
+              "dataType": "boolean"
+            } }""";
+
+    private static final String NULL_TYPE_PROP_JSON = """
+            { "properties": [ {
+              "key": "http://a.key",
+              "value": "something",
+              "type": null,
+              "dataType": "boolean"
+            } }""";
+
+    private static final String INVALID_TYPE_PROP_JSON = """
+            { "properties": [ {
+              "key": "http://a.key",
+              "value": "something",
+              "type": "this could also be empty",
+              "dataType": "boolean"
+            } }""";
+
     private TestRunner testRunner;
 
     @BeforeEach
@@ -75,20 +147,26 @@ public class IoticsJSONToTwinIT {
         assertThat(json.get("error").toString(), is(equalTo("invalid twin: missing property http://schema.org/missing_identifier")));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+            NULL_VALUE_PROP_JSON, MISSING_VALUE_PROP_JSON, EMPTY_KEY_PROP_JSON, MISSING_KEY_PROP_JSON, NULL_KEY_PROP_JSON, MISSING_TYPE_PROP_JSON, NULL_TYPE_PROP_JSON, INVALID_TYPE_PROP_JSON
+    })
+    public void wrongJsonTransitionsToFail(String badJsonString) {
+        testRunner.enqueue(badJsonString);
+        testRunner.run(1);
+        //assert the input Q is empty and the flowfile is processed
+        testRunner.assertQueueEmpty();
+        List<MockFlowFile> failure = testRunner.getFlowFilesForRelationship(Constants.FAILURE);
+        MockFlowFile outputFlowfile = failure.getFirst();
+        String outputFlowfileContent = new String(testRunner.getContentAsByteArray(outputFlowfile));
+        Gson gson = new Gson();
+        Map<String, Object> json = (Map<String, Object>) gson.fromJson(outputFlowfileContent, Map.class);
+        assertThat(json.get("error").toString(), containsString("MalformedJsonException"));
+    }
+
     @Test
     public void invalidJsonTransitionsToFail() {
-        testRunner.enqueue("""
-                                {
-                  "properties": [
-                    {
-                      "key": "http://data.iotics.com/nifi/isOperational",
-                      "value": "true",
-                      "type": "Literal",
-                      "dataType": "boolean"
-                    },
-
-                                }
-                """);
+        testRunner.enqueue(INVALID_JSON);
         testRunner.run(1);
         //assert the input Q is empty and the flowfile is processed
         testRunner.assertQueueEmpty();
