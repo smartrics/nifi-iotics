@@ -135,14 +135,24 @@ class JsonLdTwinTest {
         // Convert JSON-LD to RDF triples
         RDFDataset dataset = (RDFDataset) JsonLdProcessor.toRDF(jsonObject, options);
 
+        String graphName = dataset.keySet().iterator().next();
+        String type = dataset.getQuads(graphName)
+                .stream().filter(p -> p.getPredicate().getValue().equals("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"))
+                .findFirst()
+                .orElseThrow().getObject().getValue();
+        String label = dataset.getQuads(graphName)
+                .stream().filter(p -> p.getPredicate().getValue().equals("http://www.w3.org/2000/01/rdf-schema#label"))
+                .findFirst()
+                .orElseThrow().getObject().getValue();
+        assertThat(label, is("Toyota Camry 1"));
+        assertThat(type, is("http://schema.org/Car"));
+
         // Output RDF triples
-        for (String graphName : dataset.keySet()) {
-            for (RDFDataset.Quad quad : dataset.getQuads(graphName)) {
-                System.out.println("Graph: " + graphName
-                        + " Subject: " + quad.getSubject().getValue()
-                        + ", Predicate: " + quad.getPredicate().getValue()
-                        + ", Object: " + quad.getObject().getValue());
-            }
+        for (RDFDataset.Quad quad : dataset.getQuads(graphName)) {
+            System.out.println("Graph: " + graphName
+                    + " Subject: " + quad.getSubject().getValue()
+                    + ", Predicate: " + quad.getPredicate().getValue()
+                    + ", Object: " + quad.getObject().getValue());
         }
     }
 
