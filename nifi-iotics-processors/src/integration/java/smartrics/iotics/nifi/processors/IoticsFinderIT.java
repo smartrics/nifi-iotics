@@ -62,6 +62,27 @@ public class IoticsFinderIT {
     }
 
     @Test
+    public void testProcessorWithCorrectInputFlow() {
+        testRunner.enqueue("""
+                {
+                    "expiryTimeout": "2",
+                    "properties": [
+                        {
+                            "key": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+                            "uri":"http://schema.org/Car"
+                        },
+                        {
+                            "key": "http://schema.org/identifier",
+                            "stringLiteral":"1874258"
+                        }
+                    ],
+                    "scope": "LOCAL"
+                }
+                """);
+        run();
+    }
+
+    @Test
     public void testProcessorEmptyInputFlow() {
         testRunner.enqueue("""
                 {

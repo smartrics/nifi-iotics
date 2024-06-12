@@ -44,18 +44,15 @@ public class IoticsPublisherIT {
         feed = model.feeds().getFirst();
     }
 
-
     @Test
-    public void testProcessor() throws IOException, InterruptedException {
+    public void testProcessor() throws InterruptedException {
         int count = 5;
         String content = newRandomContent(count);
-
         testRunner.enqueue(content);
         testRunner.run();
         //assert the input Q is empty and the flowfile is processed
         testRunner.assertQueueEmpty();
         List<MockFlowFile> results = testRunner.getFlowFilesForRelationship(Constants.SUCCESS);
-
         assertThat(results.size(), is(count));
         results.forEach(mockFlowFile -> {
             String outputFlowfileContent = new String(testRunner.getContentAsByteArray(mockFlowFile));

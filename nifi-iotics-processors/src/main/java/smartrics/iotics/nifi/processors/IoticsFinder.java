@@ -54,42 +54,68 @@ import static smartrics.iotics.nifi.processors.Constants.*;
 
 @Tags({"IOTICS", "DIGITAL TWIN", "SEARCH"})
 @CapabilityDescription("""
-        Processor for IOTICS search
+Processor for IOTICS search. The processor expects an input flow file with a search payload JSON object.
+The processor's properties will be supplied - if available - as defaults if not available in the input flow file.
+An example payload is:
+<pre>
+{
+    "expiryTimeout": "2",
+    "text": "something to search",
+    "properties": [
+        {
+            "key": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+            "uri":"http://schema.org/FooBarBaz"
+        },
+        {
+            "key": "http://schema.org/identifier",
+            "stringLiteral":"1234"
+        }
+    ],
+    "location": {
+        "lat": 53.09873,
+        "lon": 0.987654,
+        "r": 1
+    },
+    "scope": "LOCAL",
+    "responseType": "MINIMAL"
+}
+</pre>
+
         """)
 public class IoticsFinder extends AbstractProcessor {
 
     public static PropertyDescriptor EXPIRY_TIMEOUT = new PropertyDescriptor
             .Builder().name("expiryTimeoutSec")
             .displayName("Expiry Timeout in Seconds")
-            .description("How long to wait for before disconnecting from receiving search results, in seconds")
+            .description("How long to wait for before disconnecting from receiving search results, in seconds. This value will be used if none supplied by the inbound flow file.")
             .required(true)
             .addValidator(POSITIVE_INTEGER_VALIDATOR)
             .build();
     public static PropertyDescriptor TEXT = new PropertyDescriptor
             .Builder().name("textFilter")
             .displayName("Text Filter")
-            .description("text filter matching label or comment")
+            .description("Text filter matching label or comment. This filter will be used if none supplied by the inbound flow file.")
             .required(false)
             .addValidator(NON_BLANK_VALIDATOR)
             .build();
     public static PropertyDescriptor LOCATION = new PropertyDescriptor
             .Builder().name("locationFilter")
             .displayName("Location Filter")
-            .description("JSON map with the following three keys: 'r', 'lat', 'lon', 'r' is the radius in KM of the circle centered in lat/lon.")
+            .description("JSON map with the following three keys: 'r', 'lat', 'lon', 'r' is the radius in KM of the circle centered in lat/lon. This object will be used if none supplied by the inbound flow file.")
             .required(false)
             .addValidator(new LocationValidator())
             .build();
     public static PropertyDescriptor PROPERTIES = new PropertyDescriptor
             .Builder().name("propertiesFilter")
             .displayName("Properties Filter")
-            .description("JSON array where each entry is a JSON map with 'key' and one of 'uri', 'stringLiteral', 'literal'. In case 'literal' is specified, an 'dataType' may be supplied, with value one of the valid xsd data types (int, boolean, anyURI, ...)")
+            .description("JSON array where each entry is a JSON map with 'key' and one of 'uri', 'stringLiteral', 'literal'. In case 'literal' is specified, an 'dataType' may be supplied, with value one of the valid xsd data types (int, boolean, anyURI, ...). This array will be used if none supplied by the inbound flow file.")
             .required(false)
             .addValidator(NON_BLANK_VALIDATOR)
             .build();
     public static PropertyDescriptor QUERY_RESPONSE_TYPE = new PropertyDescriptor.Builder()
             .name("queryResponseType")
             .displayName("Query Response Type")
-            .description("query response type: " + ResponseType.FULL.name() + ", " + ResponseType.LOCATED + ", " + ResponseType.MINIMAL)
+            .description("query response type: " + ResponseType.FULL.name() + ", " + ResponseType.LOCATED + ", " + ResponseType.MINIMAL + ". This value will be used if none supplied by the inbound flow file.")
             .allowableValues(Arrays.stream(ResponseType.values())
                     .map(enumValue -> new AllowableValue(enumValue.name(), enumValue.name()))
                     .toArray(AllowableValue[]::new))
@@ -224,7 +250,7 @@ public class IoticsFinder extends AbstractProcessor {
                 to.twins().forEach(twin -> {
                     try {
                         Gson gson = new Gson();
-                        FlowFile flowFile = session.create(session.get());
+                        FlowFile flowFile = session.create();
                         try {
                             String json = gson.toJson(twin, MyTwinModel.class);
                             session.write(flowFile, out -> out.write(json.getBytes(StandardCharsets.UTF_8)));
@@ -234,7 +260,7 @@ public class IoticsFinder extends AbstractProcessor {
                             session.transfer(flowFile, FAILURE);
                         }
                     } catch (Exception e) {
-                        getLogger().warn("unable to process twin {}", twin);
+                        getLogger().warn("unable to process twin {}", twin.id(), e);
                     }
                 });
             }
