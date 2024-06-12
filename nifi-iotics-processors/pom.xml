@@ -20,7 +20,7 @@
     <parent>
         <groupId>smartrics.iotics.nifi</groupId>
         <artifactId>nifi-iotics</artifactId>
-        <version>1.1-SNAPSHOT</version>
+        <version>1.1</version>
     </parent>
 
     <artifactId>nifi-iotics-processors</artifactId>
@@ -99,7 +99,7 @@
         <dependency>
             <groupId>smartrics.iotics.nifi</groupId>
             <artifactId>nifi-iotics-hostservice</artifactId>
-            <version>1.1-SNAPSHOT</version>
+            <version>1.1</version>
         </dependency>
         <dependency>
             <groupId>smartrics.iotics</groupId>
